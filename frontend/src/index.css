@@ -1,0 +1,59 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:root {
+  --bg: #fff8fa;
+  --surface: #fff2f4;
+  --surface2: #ffe7eb;
+  --text: #332127;
+  --muted: #85656f;
+  --accent: #d8465f;
+  --accent-dim: #f07a38;
+  --border: #f0c4ce;
+  --user-bubble: #ffe0e7;
+  --assistant-bubble: #fff6f8;
+  font-family: "Noto Sans SC", "DM Sans", system-ui, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: var(--text);
+  background-color: var(--bg);
+}
+
+[data-theme="dark"] {
+  --bg: #181116;
+  --surface: #281b23;
+  --surface2: #36242f;
+  --text: #f5e9ed;
+  --muted: #c9aeb8;
+  --accent: #ff6d86;
+  --accent-dim: #ff964d;
+  --border: #5a3b48;
+  --user-bubble: #4a2a36;
+  --assistant-bubble: #2f2029;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 12% 10%, rgba(255, 111, 97, 0.16), transparent 38%),
+    radial-gradient(circle at 88% 6%, rgba(255, 163, 72, 0.16), transparent 42%),
+    radial-gradient(circle at 68% 100%, rgba(255, 122, 176, 0.12), transparent 35%),
+    var(--bg);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+textarea {
+  font: inherit;
+}
