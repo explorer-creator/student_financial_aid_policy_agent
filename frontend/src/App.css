@@ -20,19 +20,15 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  background: linear-gradient(
-    115deg,
-    rgba(216, 70, 95, 0.12),
-    rgba(240, 122, 56, 0.1) 45%,
-    rgba(255, 122, 176, 0.1) 100%
-  );
+  background: var(--text-box-bg);
+  box-shadow: 0 1px 0 rgba(216, 70, 95, 0.08);
 }
 
 .demo-banner {
   font-size: 0.8rem;
-  color: #c9a227;
-  background: rgba(201, 162, 39, 0.12);
-  border: 1px solid rgba(201, 162, 39, 0.35);
+  color: #9a7b18;
+  background: var(--text-box-bg);
+  border: 1px solid rgba(201, 162, 39, 0.45);
   padding: 0.5rem 0.75rem;
   border-radius: 10px;
   margin-bottom: 0.75rem;
@@ -86,11 +82,38 @@ h1 {
   color: var(--muted);
 }
 
+.platform-overview {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 0.6rem;
+  margin-bottom: 0.8rem;
+}
+
+.overview-card {
+  border: 1px solid var(--border);
+  background: var(--text-box-bg);
+  border-radius: 12px;
+  padding: 0.55rem 0.7rem;
+}
+
+.overview-label {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin-bottom: 0.15rem;
+}
+
+.overview-card strong {
+  font-size: 0.86rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
 .chat-panel {
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: var(--surface);
+  background: var(--text-box-bg);
   border: 1px solid var(--border);
   border-radius: 16px;
   overflow: hidden;
@@ -115,6 +138,28 @@ h1 {
 
 .bubble-row.assistant {
   justify-content: flex-start;
+  align-items: flex-end;
+  gap: 0.45rem;
+}
+
+.bubble-avatar {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 8px;
+  border: 1px solid #e8ccd2;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: #fff;
+  align-self: flex-end;
+}
+
+.avatar-fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: #b24862;
+  background: #fff;
 }
 
 .bubble {
@@ -122,6 +167,12 @@ h1 {
   padding: 0.65rem 0.85rem;
   border-radius: 14px;
   border: 1px solid var(--border);
+}
+
+.bubble-row.assistant .bubble {
+  flex: 1;
+  min-width: 0;
+  max-width: min(92%, calc(100% - 2.75rem));
 }
 
 .bubble.user {
@@ -136,6 +187,18 @@ h1 {
 .bubble.thinking {
   color: var(--muted);
   font-style: italic;
+}
+
+[data-theme="dark"] .bubble.assistant {
+  color: #2a1f24;
+}
+
+[data-theme="dark"] .bubble.assistant .bubble-label {
+  color: #6d5c64;
+}
+
+[data-theme="dark"] .bubble.assistant.thinking {
+  color: #6d5c64;
 }
 
 .bubble-label {
@@ -155,7 +218,7 @@ h1 {
 .quick-options {
   padding: 0.65rem 1rem 0.75rem;
   border-top: 1px solid var(--border);
-  background: rgba(216, 70, 95, 0.06);
+  background: var(--text-box-bg);
 }
 
 .quick-options-label {
@@ -178,7 +241,7 @@ h1 {
   padding: 0.5rem 0.65rem;
   border-radius: 10px;
   border: 1px solid var(--border);
-  background: var(--surface2);
+  background: var(--text-box-bg);
   color: var(--text);
   cursor: pointer;
   transition: border-color 0.15s, color 0.15s;
@@ -243,7 +306,7 @@ h1 {
   gap: 0.6rem;
   padding: 0.75rem;
   border-top: 1px solid var(--border);
-  background: rgba(216, 70, 95, 0.07);
+  background: var(--text-box-bg);
   align-items: flex-end;
 }
 
@@ -253,7 +316,7 @@ h1 {
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 0.6rem 0.75rem;
-  background: var(--bg);
+  background: var(--text-box-bg);
   color: var(--text);
   outline: none;
 }
@@ -290,6 +353,10 @@ h1 {
   gap: 0.35rem;
   margin-bottom: 0.75rem;
   flex-wrap: wrap;
+  padding: 0.5rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--text-box-bg);
 }
 
 .tab-btn {
@@ -298,7 +365,7 @@ h1 {
   padding: 0.5rem 0.65rem;
   border-radius: 10px;
   border: 1px solid var(--border);
-  background: var(--surface);
+  background: var(--text-box-bg);
   color: var(--muted);
   font-size: 0.85rem;
 }
@@ -316,7 +383,7 @@ h1 {
 }
 
 .tool-panel {
-  background: var(--surface);
+  background: var(--text-box-bg);
   border: 1px solid var(--border);
   border-radius: 16px;
   padding: 1rem 1rem 1.25rem;
@@ -349,7 +416,7 @@ h1 {
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 0.65rem 0.75rem;
-  background: var(--bg);
+  background: var(--text-box-bg);
   color: var(--text);
   resize: vertical;
 }
@@ -388,7 +455,7 @@ h1 {
   margin: 0.75rem 0 0;
   padding: 0.75rem;
   border-radius: 12px;
-  background: var(--bg);
+  background: var(--text-box-bg);
   border: 1px solid var(--border);
   font-size: 0.78rem;
   line-height: 1.45;
@@ -633,7 +700,7 @@ h1 {
   padding: 0.85rem 1rem;
   border-radius: 12px;
   border: 1px solid var(--border);
-  background: var(--bg);
+  background: var(--text-box-bg);
 }
 
 .portal-card-title {
@@ -655,7 +722,7 @@ h1 {
   font-size: 0.82em;
   padding: 0.1em 0.35em;
   border-radius: 6px;
-  background: var(--bg);
+  background: var(--text-box-bg);
   border: 1px solid var(--border);
 }
 
@@ -665,7 +732,7 @@ h1 {
   padding: 0.5rem 0.65rem;
   border-radius: 10px;
   border: 1px solid var(--border);
-  background: var(--bg);
+  background: var(--text-box-bg);
   color: var(--text);
   font-size: 0.9rem;
 }
@@ -727,9 +794,57 @@ h1 {
   background: rgba(240, 122, 56, 0.08);
 }
 
+/* 夜间模式下主内容区为浅底时，正文用深色字以保证可读性 */
+[data-theme="dark"] .main-column .header,
+[data-theme="dark"] .main-column .platform-overview .overview-card,
+[data-theme="dark"] .main-column .chat-panel,
+[data-theme="dark"] .main-column .tabs,
+[data-theme="dark"] .main-column .tab-btn,
+[data-theme="dark"] .main-column .composer,
+[data-theme="dark"] .main-column .quick-options,
+[data-theme="dark"] .tool-panel,
+[data-theme="dark"] .portal-card,
+[data-theme="dark"] .json-out,
+[data-theme="dark"] .json-editor,
+[data-theme="dark"] .portal-input {
+  color: #2a1f24;
+}
+
+[data-theme="dark"] .main-column h1,
+[data-theme="dark"] .tool-h2,
+[data-theme="dark"] .portal-card-title {
+  color: #2a1f24;
+}
+
+[data-theme="dark"] .tool-h3 {
+  color: #5c4d54;
+}
+
+[data-theme="dark"] .main-column .subtitle,
+[data-theme="dark"] .tool-intro,
+[data-theme="dark"] .field-label,
+[data-theme="dark"] .overview-label,
+[data-theme="dark"] .portal-card-line,
+[data-theme="dark"] .portal-bullet-list {
+  color: #5c4d54;
+}
+
+[data-theme="dark"] .data-table th,
+[data-theme="dark"] .data-table td {
+  color: #2a1f24;
+}
+
+[data-theme="dark"] .demo-banner {
+  color: #8a7220;
+}
+
 @media (max-width: 959px) {
   .header {
     align-items: flex-start;
+  }
+
+  .platform-overview {
+    grid-template-columns: 1fr;
   }
 
   .header-actions {

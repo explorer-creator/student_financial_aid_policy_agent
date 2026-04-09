@@ -31,6 +31,30 @@ const MAIN_VIEW_ORDER: MainView[] = [
 ];
 
 type ThemeMode = "light" | "dark";
+const AVATAR_SRC = `${import.meta.env.BASE_URL}gdut-avatar.png`;
+
+function AgentAvatar({ className, alt }: { className: string; alt: string }) {
+  const [failed, setFailed] = useState(false);
+
+  if (failed) {
+    return (
+      <span className={`${className} avatar-fallback`} role="img" aria-label={alt}>
+        广
+      </span>
+    );
+  }
+
+  return (
+    <img
+      className={className}
+      src={AVATAR_SRC}
+      alt={alt}
+      onError={() => setFailed(true)}
+      loading="eager"
+      decoding="async"
+    />
+  );
+}
 
 function mainViewFromHash(): MainView {
   const raw = window.location.hash.replace(/^#\/?/, "");
@@ -855,7 +879,7 @@ export default function App() {
             onClick={() => navigateView("tools")}
           >
             <span className="sidebar-link-main">智能工具</span>
-            <span className="sidebar-link-sub">问答与演示能力</span>
+            <span className="sidebar-link-sub">咨询、测算、预审与推送</span>
           </button>
           <button
             type="button"
@@ -863,7 +887,7 @@ export default function App() {
             onClick={() => navigateView("policy")}
           >
             <span className="sidebar-link-main">资助文件与政策</span>
-            <span className="sidebar-link-sub">官方链接汇总</span>
+            <span className="sidebar-link-sub">一键跳转官方原文</span>
           </button>
           <button
             type="button"
@@ -871,7 +895,7 @@ export default function App() {
             onClick={() => navigateView("contacts")}
           >
             <span className="sidebar-link-main">校区联系方式</span>
-            <span className="sidebar-link-sub">电话与地址</span>
+            <span className="sidebar-link-sub">校区电话、邮箱与地址</span>
           </button>
           <button
             type="button"
@@ -879,7 +903,7 @@ export default function App() {
             onClick={() => navigateView("dashboard")}
           >
             <span className="sidebar-link-main">数据看板</span>
-            <span className="sidebar-link-sub">汇总指标</span>
+            <span className="sidebar-link-sub">进度、完成率、风险概览</span>
           </button>
           <button
             type="button"
@@ -887,7 +911,7 @@ export default function App() {
             onClick={() => navigateView("events")}
           >
             <span className="sidebar-link-main">事件处理进度</span>
-            <span className="sidebar-link-sub">工单演示</span>
+            <span className="sidebar-link-sub">工单状态与节点追踪</span>
           </button>
           <button
             type="button"
@@ -895,7 +919,7 @@ export default function App() {
             onClick={() => navigateView("feedback")}
           >
             <span className="sidebar-link-main">反馈箱</span>
-            <span className="sidebar-link-sub">意见与建议</span>
+            <span className="sidebar-link-sub">问题上报与改进建议</span>
           </button>
           <button
             type="button"
@@ -903,7 +927,7 @@ export default function App() {
             onClick={() => navigateView("admin")}
           >
             <span className="sidebar-link-main">后台管理平台</span>
-            <span className="sidebar-link-sub">管理员入口</span>
+            <span className="sidebar-link-sub">权限、审计与运行管理</span>
           </button>
         </nav>
       </aside>
@@ -948,11 +972,11 @@ export default function App() {
           </div>
         )}
         <div className="brand">
-          <img className="logo" src="/gdut-avatar.png" alt="广东工业大学校徽" />
+          <AgentAvatar className="logo" alt="广东工业大学校徽" />
           <div>
             <h1>广东工业大学 · 资助智能体</h1>
             <p className="subtitle">
-              政策问答 · 匹配推送 · 资格审查 · 智能预警（演示规则，以学校正式通知为准）
+              政策咨询、资格预审、资助匹配、进度跟踪的一体化学生资助平台
             </p>
           </div>
         </div>
@@ -967,6 +991,21 @@ export default function App() {
           </button>
         </div>
       </header>
+
+      <section className="platform-overview" aria-label="平台概览">
+        <div className="overview-card">
+          <span className="overview-label">当前模式</span>
+          <strong>{isStaticDemo ? "静态演示" : "联调模式"}</strong>
+        </div>
+        <div className="overview-card">
+          <span className="overview-label">推荐入口</span>
+          <strong>先看「资助文件与政策」再办业务</strong>
+        </div>
+        <div className="overview-card">
+          <span className="overview-label">咨询兜底</span>
+          <strong>资助中心 020-39322619 / 39322610</strong>
+        </div>
+      </section>
 
       {mainView === "tools" && (
         <>
@@ -1023,6 +1062,9 @@ export default function App() {
                 key={i}
                 className={`bubble-row ${msg.role === "user" ? "user" : "assistant"}`}
               >
+                {msg.role === "assistant" && (
+                  <AgentAvatar className="bubble-avatar" alt="助手头像" />
+                )}
                 <div className={`bubble ${msg.role}`}>
                   <div className="bubble-label">
                     {msg.role === "user" ? "你" : "助手"}
@@ -1033,6 +1075,7 @@ export default function App() {
             ))}
             {loading && (
               <div className="bubble-row assistant">
+                <AgentAvatar className="bubble-avatar" alt="助手头像" />
                 <div className="bubble assistant thinking">正在思考…</div>
               </div>
             )}
