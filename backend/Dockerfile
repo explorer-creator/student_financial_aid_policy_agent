@@ -1,4 +1,5 @@
-FROM python:3.12-slim
+# Official mirror on ECR Public — avoids docker.io (timeouts / "not found" behind some CN mirrors).
+FROM public.ecr.aws/docker/library/python:3.12-slim
 
 WORKDIR /app
 COPY requirements.txt .
