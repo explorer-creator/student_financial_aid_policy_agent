@@ -7,3 +7,14 @@ __pycache__/
 venv/
 *.egg-info/
 .DS_Store
+
+# 大型本地资料（版权/体积）；题库经 scripts/sync_hongfan_bank.py 同步到 frontend/src/data/hongfan-bank.json
+01历年真题及解析/
+02教材5本/
+*.baiduyun.p.downloading
+
+# 本地/编辑器临时文件
+~$*.docx
+_tmp*.txt
+_multi.txt
+frontend/tsconfig.tsbuildinfo

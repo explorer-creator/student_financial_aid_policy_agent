@@ -1,26 +1,47 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 import {
   CAMPUS_CONTACT_BLOCKS,
   MOCK_EVENT_TICKETS,
   POLICY_LINK_GROUPS,
 } from "./portalData";
+import {
+  HONGFAN_BANK_ITEMS,
+  HONGFAN_COURSES,
+  HONGFAN_INTRO,
+  HONGFAN_INTRO_SECOND,
+  hongfanItemsForCourse,
+  type HongfanBankItem,
+  type HongfanCourseId,
+} from "./hongfanData";
+import { HongfanQuizPanel } from "./HongfanQuizPanel";
+import { HonggeLingjingPanel } from "./HonggeLingjingPanel";
+import { LearningMaterialsPanel } from "./LearningMaterialsPanel";
+import { ToolResultVisual } from "./toolResultVisual";
 
 type Role = "user" | "assistant";
 type Msg = { role: Role; content: string };
-type Tab = "chat" | "screen" | "insights" | "calculator" | "match" | "ops";
+type Tab = "screen" | "insights" | "calculator" | "match" | "ops";
 
 /** 侧栏一级页面（#hash 同步，便于收藏） */
 type MainView =
+  | "chat"
+  | "hongfan"
   | "tools"
   | "policy"
   | "contacts"
   | "dashboard"
   | "events"
   | "feedback"
-  | "admin";
+  | "admin"
+  | "soul_window"
+  | "hongge";
 
 const MAIN_VIEW_ORDER: MainView[] = [
+  "chat",
+  "hongfan",
+  "soul_window",
+  "hongge",
   "tools",
   "policy",
   "contacts",
@@ -58,15 +79,47 @@ function AgentAvatar({ className, alt }: { className: string; alt: string }) {
 
 function mainViewFromHash(): MainView {
   const raw = window.location.hash.replace(/^#\/?/, "");
-  return MAIN_VIEW_ORDER.includes(raw as MainView) ? (raw as MainView) : "tools";
+  if (!raw) return "chat";
+  return MAIN_VIEW_ORDER.includes(raw as MainView) ? (raw as MainView) : "chat";
 }
 
 function preferredThemeFromSystem(): ThemeMode {
   return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
-const apiBase = import.meta.env.VITE_API_BASE ?? "";
-const isStaticDemo = import.meta.env.VITE_DEMO_ONLY === "true";
+const QUICK_TOPICS_VISIBLE_KEY = "gdut_aid_quick_topics_visible";
+
+function readQuickTopicsVisible(): boolean {
+  try {
+    return localStorage.getItem(QUICK_TOPICS_VISIBLE_KEY) !== "0";
+  } catch {
+    return true;
+  }
+}
+
+/** 防止 .env 误粘贴「https://http://…」或中文说明导致 fetch 拼错 URL */
+function normalizeApiBase(raw: string | undefined): string {
+  if (!raw) return "";
+  let s = String(raw).trim();
+  while (/^https?:\/\/https?:\/\//i.test(s)) {
+    s = s.replace(/^https?:\/\//i, "");
+  }
+  const cut = s.search(/[\s\uFF08（]/);
+  if (cut > 0) s = s.slice(0, cut);
+  return s.replace(/\/+$/, "");
+}
+
+/** 开发态用相对路径 /api，走 Vite 代理到 8000，避免 localhost 页面请求 127.0.0.1 触发跨域 Failed to fetch */
+const apiBase = import.meta.env.DEV
+  ? ""
+  : normalizeApiBase(import.meta.env.VITE_API_BASE);
+/** 本地 npm run dev 一律走联调：避免本机/系统环境变量里残留的 VITE_DEMO_ONLY=true 覆盖 .env */
+const isStaticDemo =
+  import.meta.env.DEV ? false : import.meta.env.VITE_DEMO_ONLY === "true";
+
+/** 生产构建若未设置 VITE_API_BASE，fetch 会请求当前站点下的 /api/…，静态服务器无此路由 → 404；学习材料改走说明文案 */
+const learningMaterialsStatic =
+  import.meta.env.DEV ? false : isStaticDemo || !apiBase;
 
 const DEFAULT_SCREEN_JSON = `{
   "students": [
@@ -142,11 +195,21 @@ const DEFAULT_PRECHECK_JSON = `{
   ]
 }`;
 
-async function postChat(messages: { role: string; content: string }[]) {
+async function postChat(
+  messages: { role: string; content: string }[],
+  opts?: { appScope?: "policy" | "hongfan" | "soul_window"; courseTag?: HongfanCourseId | null },
+) {
+  const body: Record<string, unknown> = {
+    messages,
+    app_scope: opts?.appScope ?? "policy",
+  };
+  if (opts?.courseTag) {
+    body.course_tag = opts.courseTag;
+  }
   const res = await fetch(`${apiBase}/api/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ messages }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) {
     const err = await res.text();
@@ -156,13 +219,29 @@ async function postChat(messages: { role: string; content: string }[]) {
 }
 
 const ASSISTANT_INTRO =
-  "你好，我是「广东工业大学学生资助政策」智能体。\n\n" +
+  "你好，我是「广工学工数智助手」里的资助政策咨询入口。\n\n" +
   "我可以协助你了解国家与学校层面的奖助学金、助学贷款、绿色通道、勤工助学、困难认定与申诉渠道等信息。回答基于公开政策归纳，个人能否获评、具体金额与时间，请以学校及学院当年正式通知为准。\n\n" +
   "若在这里无法解决你的问题，请拨打学校学生资助管理中心（大学城校区）电话：020-39322619 或 020-39322610，或发邮件至 xsczdb@gdut.edu.cn；也可先联系所在学院辅导员。\n\n" +
-  "你也可以使用页面上方的其他功能：政策匹配与推送、资助计算器、资格审查、智能预警、预审机器人与看板等（均为演示能力）。";
+  "更多演示能力（资格审查、计算器、政策匹配等）在侧栏「智能工具」；政策原文与校区联系方式见「资助文件」「校区联系方式」。";
 
 const ASSISTANT_SECOND =
-  "接下来你可以任选下面一个主题，我会立刻给出对应说明；也可以在下方输入框自由提问。";
+  "你可以点击下方快捷主题，或在输入框自由提问。";
+
+const SOUL_WINDOW_INTRO =
+  "你好，欢迎来到「心灵之窗」。\n\n" +
+  "你可以在这里聊聊情绪、压力、人际或自我认同等话题。我会尽量温暖、耐心地回应，并陪你一起梳理感受。\n\n" +
+  "重要说明：对话由人工智能生成，不能替代心理咨询、精神科诊疗或危机干预；不用于诊断或开药。";
+
+const SOUL_WINDOW_SECOND =
+  "若你感到难以承受、出现自伤自杀念头或正在面临紧迫危险，请立即联系身边信任的人，拨打 110 / 120，或心理援助热线（如 400-161-9995，以实际公布为准），并尽快联系学校心理中心或医院急诊。\n\n" +
+  "配置 OPENAI_API_KEY（例如对接 DeepSeek 等兼容接口）并启动后端后，回复将由大模型生成。";
+
+const SOUL_QUICK_TOPICS: { id: string; label: string; text: string }[] = [
+  { id: "exam", label: "考试焦虑睡不着", text: "最近考试周压力很大，晚上睡不着，脑子一直转，我该怎么缓解？" },
+  { id: "peer", label: "和室友相处困难", text: "和室友经常有小摩擦，感觉很压抑，又不想把关系搞僵，怎么办？" },
+  { id: "future", label: "对未来很迷茫", text: "对未来特别迷茫，不知道自己适合做什么，觉得很空虚。" },
+  { id: "home", label: "想家又不敢说", text: "在外读书很想家，但不敢跟家里说怕他们担心，自己憋着很难受。" },
+];
 
 type QuickOption = { id: string; label: string; reply: string };
 
@@ -255,7 +334,7 @@ const QUICK_OPTIONS: QuickOption[] = [
 ];
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>("chat");
+  const [tab, setTab] = useState<Tab>("screen");
 
   const [messages, setMessages] = useState<Msg[]>([
     { role: "assistant", content: ASSISTANT_INTRO },
@@ -267,8 +346,30 @@ export default function App() {
   const [demoMode, setDemoMode] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  const [hfMessages, setHfMessages] = useState<Msg[]>([
+    { role: "assistant", content: HONGFAN_INTRO },
+    { role: "assistant", content: HONGFAN_INTRO_SECOND },
+  ]);
+  const [hfInput, setHfInput] = useState("");
+  const [hfLoading, setHfLoading] = useState(false);
+  const [hfError, setHfError] = useState<string | null>(null);
+  const [hfDemoMode, setHfDemoMode] = useState(false);
+  const [hfCourseTag, setHfCourseTag] = useState<HongfanCourseId | null>(null);
+  const [hfTab, setHfTab] = useState<"chat" | "quiz" | "materials">("chat");
+  const hfBottomRef = useRef<HTMLDivElement>(null);
+
+  const [soulMessages, setSoulMessages] = useState<Msg[]>([
+    { role: "assistant", content: SOUL_WINDOW_INTRO },
+    { role: "assistant", content: SOUL_WINDOW_SECOND },
+  ]);
+  const [soulInput, setSoulInput] = useState("");
+  const [soulLoading, setSoulLoading] = useState(false);
+  const [soulError, setSoulError] = useState<string | null>(null);
+  const [soulDemoMode, setSoulDemoMode] = useState(false);
+  const soulBottomRef = useRef<HTMLDivElement>(null);
+
   const [screenJson, setScreenJson] = useState(DEFAULT_SCREEN_JSON);
-  const [screenResult, setScreenResult] = useState<string | null>(null);
+  const [screenResult, setScreenResult] = useState<unknown>(null);
   const [screenLoading, setScreenLoading] = useState(false);
 
   const [povertyForm, setPovertyForm] = useState({
@@ -278,7 +379,7 @@ export default function App() {
     canteen_share: 0.78,
     essential_share: 0.88 as number | "",
   });
-  const [povertyResult, setPovertyResult] = useState<string | null>(null);
+  const [povertyResult, setPovertyResult] = useState<unknown>(null);
   const [povertyLoading, setPovertyLoading] = useState(false);
 
   const [recForm, setRecForm] = useState({
@@ -287,7 +388,7 @@ export default function App() {
     in_poverty_database: true,
     is_suspended: false,
   });
-  const [recResult, setRecResult] = useState<string | null>(null);
+  const [recResult, setRecResult] = useState<unknown>(null);
   const [recLoading, setRecLoading] = useState(false);
 
   const [calcForm, setCalcForm] = useState({
@@ -302,7 +403,7 @@ export default function App() {
     wants_national_encouragement: true,
     wants_national_grant: true,
   });
-  const [calcResult, setCalcResult] = useState<string | null>(null);
+  const [calcResult, setCalcResult] = useState<unknown>(null);
   const [calcLoading, setCalcLoading] = useState(false);
 
   const [matchForm, setMatchForm] = useState({
@@ -322,23 +423,23 @@ export default function App() {
     is_suspended: false,
     pushMonth: 9,
   });
-  const [matchResult, setMatchResult] = useState<string | null>(null);
-  const [pushResult, setPushResult] = useState<string | null>(null);
-  const [windowsResult, setWindowsResult] = useState<string | null>(null);
+  const [matchResult, setMatchResult] = useState<unknown>(null);
+  const [pushResult, setPushResult] = useState<unknown>(null);
+  const [windowsResult, setWindowsResult] = useState<unknown>(null);
   const [matchLoading, setMatchLoading] = useState(false);
   const [pushLoading, setPushLoading] = useState(false);
   const [windowsLoading, setWindowsLoading] = useState(false);
 
   const [hiddenJson, setHiddenJson] = useState(DEFAULT_HIDDEN_JSON);
-  const [hiddenResult, setHiddenResult] = useState<string | null>(null);
+  const [hiddenResult, setHiddenResult] = useState<unknown>(null);
   const [hiddenLoading, setHiddenLoading] = useState(false);
 
   const [precheckJson, setPrecheckJson] = useState(DEFAULT_PRECHECK_JSON);
-  const [precheckResult, setPrecheckResult] = useState<string | null>(null);
+  const [precheckResult, setPrecheckResult] = useState<unknown>(null);
   const [precheckLoading, setPrecheckLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
 
-  const [dashboardResult, setDashboardResult] = useState<string | null>(null);
+  const [dashboardResult, setDashboardResult] = useState<unknown>(null);
   const [dashboardLoading, setDashboardLoading] = useState(false);
 
   const [mainView, setMainView] = useState<MainView>(() => mainViewFromHash());
@@ -352,6 +453,7 @@ export default function App() {
     const saved = localStorage.getItem("gdut_aid_theme");
     return saved === "dark" || saved === "light" ? saved : preferredThemeFromSystem();
   });
+  const [quickTopicsVisible, setQuickTopicsVisible] = useState(readQuickTopicsVisible);
 
   const buildMatchBody = () => ({
     grade: matchForm.grade,
@@ -379,20 +481,38 @@ export default function App() {
   }, [messages, scrollDown]);
 
   useEffect(() => {
+    hfBottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [hfMessages]);
+
+  useEffect(() => {
+    soulBottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [soulMessages]);
+
+  useEffect(() => {
     const onHash = () => setMainView(mainViewFromHash());
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
 
   useEffect(() => {
-    if (isStaticDemo) setDemoMode(true);
+    if (isStaticDemo) {
+      setDemoMode(true);
+      setHfDemoMode(true);
+      setSoulDemoMode(true);
+    }
   }, []);
 
   const navigateView = (v: MainView) => {
     setMainView(v);
     window.location.hash = v;
     setSidebarOpen(false);
+    if (v === "tools") setTab("screen");
   };
+
+  const hongfanBankFiltered = useMemo(
+    () => hongfanItemsForCourse(hfCourseTag),
+    [hfCourseTag],
+  );
 
   const send = async (text: string) => {
     const trimmed = text.trim();
@@ -417,7 +537,7 @@ export default function App() {
           "若需实时智能问答，请部署后端并配置 VITE_API_BASE 指向后端地址。";
         setMessages((m) => [...m, { role: "assistant", content: demoReply }]);
       } else {
-        const data = await postChat(history);
+        const data = await postChat(history, { appScope: "policy" });
         if (data.mode === "demo") setDemoMode(true);
         setMessages((m) => [...m, { role: "assistant", content: data.reply }]);
       }
@@ -426,6 +546,86 @@ export default function App() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const sendHongfan = async (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed || hfLoading) return;
+    setHfError(null);
+    const nextUser: Msg = { role: "user", content: trimmed };
+    setHfMessages((m) => [...m, nextUser]);
+    setHfInput("");
+    setHfLoading(true);
+    const history = [...hfMessages, nextUser].map((x) => ({
+      role: x.role,
+      content: x.content,
+    }));
+    try {
+      if (isStaticDemo) {
+        setHfDemoMode(true);
+        const label = hfCourseTag
+          ? HONGFAN_COURSES.find((c) => c.id === hfCourseTag)?.full ?? ""
+          : "";
+        const demoReply =
+          "【静态演示】当前为静态站点，红帆知海未连接后端 API。\n\n" +
+          (label ? `你已选择读本侧重「${label}」。` : "") +
+          "部署后端并配置 VITE_API_BASE 后可使用大模型答疑。";
+        setHfMessages((m) => [...m, { role: "assistant", content: demoReply }]);
+      } else {
+        const data = await postChat(history, {
+          appScope: "hongfan",
+          courseTag: hfCourseTag,
+        });
+        if (data.mode === "demo") setHfDemoMode(true);
+        setHfMessages((m) => [...m, { role: "assistant", content: data.reply }]);
+      }
+    } catch (e) {
+      setHfError(e instanceof Error ? e.message : "发送失败");
+    } finally {
+      setHfLoading(false);
+    }
+  };
+
+  const sendSoul = async (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed || soulLoading) return;
+    setSoulError(null);
+    const nextUser: Msg = { role: "user", content: trimmed };
+    setSoulMessages((m) => [...m, nextUser]);
+    setSoulInput("");
+    setSoulLoading(true);
+    const history = [...soulMessages, nextUser].map((x) => ({
+      role: x.role,
+      content: x.content,
+    }));
+    try {
+      if (isStaticDemo) {
+        setSoulDemoMode(true);
+        const demoReply =
+          "【静态演示】当前页面未连接后端 API，心灵之窗无法调用大模型。\n\n" +
+          "你值得被认真倾听。请在本地运行后端并配置 VITE_API_BASE，或部署带 API 的站点后再试；紧急情况下请直接拨打 110 / 120 或心理援助热线，并联系学校心理中心。";
+        setSoulMessages((m) => [...m, { role: "assistant", content: demoReply }]);
+      } else {
+        const data = await postChat(history, { appScope: "soul_window" });
+        if (data.mode === "demo") setSoulDemoMode(true);
+        setSoulMessages((m) => [...m, { role: "assistant", content: data.reply }]);
+      }
+    } catch (e) {
+      setSoulError(e instanceof Error ? e.message : "发送失败");
+    } finally {
+      setSoulLoading(false);
+    }
+  };
+
+  const pickHongfanBankItem = (item: HongfanBankItem) => {
+    if (hfLoading) return;
+    const label = HONGFAN_COURSES.find((c) => c.id === item.courseId)?.full ?? item.courseId;
+    setHfError(null);
+    setHfMessages((m) => [
+      ...m,
+      { role: "user", content: `【题库 · ${label}】${item.question}` },
+      { role: "assistant", content: item.answer },
+    ]);
   };
 
   const pickQuickOption = (opt: QuickOption) => {
@@ -443,21 +643,15 @@ export default function App() {
     setScreenResult(null);
     try {
       if (isStaticDemo) {
-        setScreenResult(
-          JSON.stringify(
-            {
-              note: "静态演示数据（未连接后端）",
-              total: 3,
-              passed: 1,
-              exception_list: [
-                { student_id: "2021002", reason: "休学中" },
-                { student_id: "2021003", reason: "严重违纪记录" },
-              ],
-            },
-            null,
-            2
-          )
-        );
+        setScreenResult({
+          note: "静态演示数据（未连接后端）",
+          total: 3,
+          passed: 1,
+          exception_list: [
+            { student_id: "2021002", reason: "休学中" },
+            { student_id: "2021003", reason: "严重违纪记录" },
+          ],
+        });
         return;
       }
       const body = JSON.parse(screenJson) as { students: unknown[] };
@@ -467,8 +661,8 @@ export default function App() {
         body: JSON.stringify(body),
       });
       if (!res.ok) throw new Error(await res.text());
-      const data = (await res.json()) as Record<string, unknown>;
-      setScreenResult(JSON.stringify(data, null, 2));
+      const data = await res.json();
+      setScreenResult(data);
     } catch (e) {
       setScreenResult(
         e instanceof Error ? e.message : "解析失败，请检查 JSON 格式与 intent 取值。"
@@ -483,19 +677,13 @@ export default function App() {
     setPovertyResult(null);
     try {
       if (isStaticDemo) {
-        setPovertyResult(
-          JSON.stringify(
-            {
-              note: "静态演示数据（未连接后端）",
-              student_id: povertyForm.student_id,
-              risk_level: "medium",
-              score: 0.67,
-              recommendation: "建议辅导员跟进访谈，核验家庭经济变化。",
-            },
-            null,
-            2
-          )
-        );
+        setPovertyResult({
+          note: "静态演示数据（未连接后端）",
+          student_id: povertyForm.student_id,
+          risk_level: "medium",
+          score: 0.67,
+          recommendation: "建议辅导员跟进访谈，核验家庭经济变化。",
+        });
         return;
       }
       const res = await fetch(`${apiBase}/api/insights/poverty-risk`, {
@@ -512,7 +700,7 @@ export default function App() {
       });
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
-      setPovertyResult(JSON.stringify(data, null, 2));
+      setPovertyResult(data);
     } catch (e) {
       setPovertyResult(e instanceof Error ? e.message : "请求失败");
     } finally {
@@ -525,16 +713,10 @@ export default function App() {
     setRecResult(null);
     try {
       if (isStaticDemo) {
-        setRecResult(
-          JSON.stringify(
-            {
-              note: "静态演示数据（未连接后端）",
-              recommendations: ["国家助学金", "勤工助学岗位", "临时困难资助"],
-            },
-            null,
-            2
-          )
-        );
+        setRecResult({
+          note: "静态演示数据（未连接后端）",
+          recommendations: ["国家助学金", "勤工助学岗位", "临时困难资助"],
+        });
         return;
       }
       const res = await fetch(`${apiBase}/api/recommendations/auto`, {
@@ -544,7 +726,7 @@ export default function App() {
       });
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
-      setRecResult(JSON.stringify(data, null, 2));
+      setRecResult(data);
     } catch (e) {
       setRecResult(e instanceof Error ? e.message : "请求失败");
     } finally {
@@ -557,20 +739,14 @@ export default function App() {
     setCalcResult(null);
     try {
       if (isStaticDemo) {
-        setCalcResult(
-          JSON.stringify(
-            {
-              note: "静态演示数据（未连接后端）",
-              estimated_total_yuan: 9700,
-              detail: {
-                national_grant: 3700,
-                national_encouragement: 6000,
-              },
-            },
-            null,
-            2
-          )
-        );
+        setCalcResult({
+          note: "静态演示数据（未连接后端）",
+          estimated_total_yuan: 9700,
+          detail: {
+            national_grant: 3700,
+            national_encouragement: 6000,
+          },
+        });
         return;
       }
       const body = {
@@ -584,7 +760,7 @@ export default function App() {
       });
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
-      setCalcResult(JSON.stringify(data, null, 2));
+      setCalcResult(data);
     } catch (e) {
       setCalcResult(e instanceof Error ? e.message : "试算失败");
     } finally {
@@ -597,16 +773,10 @@ export default function App() {
     setMatchResult(null);
     try {
       if (isStaticDemo) {
-        setMatchResult(
-          JSON.stringify(
-            {
-              note: "静态演示数据（未连接后端）",
-              matched: ["国家励志奖学金", "校级综合奖学金", "社会捐赠奖助学金（待学院通知）"],
-            },
-            null,
-            2
-          )
-        );
+        setMatchResult({
+          note: "静态演示数据（未连接后端）",
+          matched: ["国家励志奖学金", "校级综合奖学金", "社会捐赠奖助学金（待学院通知）"],
+        });
         return;
       }
       const res = await fetch(`${apiBase}/api/match/awards`, {
@@ -616,7 +786,7 @@ export default function App() {
       });
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
-      setMatchResult(JSON.stringify(data, null, 2));
+      setMatchResult(data);
     } catch (e) {
       setMatchResult(e instanceof Error ? e.message : "匹配失败");
     } finally {
@@ -629,17 +799,11 @@ export default function App() {
     setPushResult(null);
     try {
       if (isStaticDemo) {
-        setPushResult(
-          JSON.stringify(
-            {
-              note: "静态演示数据（未连接后端）",
-              month: matchForm.pushMonth,
-              reminders: ["关注学院通知发布时间", "在系统内按时提交申请", "准备佐证材料并备份"],
-            },
-            null,
-            2
-          )
-        );
+        setPushResult({
+          note: "静态演示数据（未连接后端）",
+          month: matchForm.pushMonth,
+          reminders: ["关注学院通知发布时间", "在系统内按时提交申请", "准备佐证材料并备份"],
+        });
         return;
       }
       const res = await fetch(`${apiBase}/api/push/reminders`, {
@@ -652,7 +816,7 @@ export default function App() {
       });
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
-      setPushResult(JSON.stringify(data, null, 2));
+      setPushResult(data);
     } catch (e) {
       setPushResult(e instanceof Error ? e.message : "生成失败");
     } finally {
@@ -665,25 +829,19 @@ export default function App() {
     setWindowsResult(null);
     try {
       if (isStaticDemo) {
-        setWindowsResult(
-          JSON.stringify(
-            {
-              note: "静态演示数据（未连接后端）",
-              windows: [
-                { month: 9, topics: ["国家奖助学金申请", "困难认定复核"] },
-                { month: 11, topics: ["国家助学金评定公示"] },
-              ],
-            },
-            null,
-            2
-          )
-        );
+        setWindowsResult({
+          note: "静态演示数据（未连接后端）",
+          windows: [
+            { month: 9, topics: ["国家奖助学金申请", "困难认定复核"] },
+            { month: 11, topics: ["国家助学金评定公示"] },
+          ],
+        });
         return;
       }
       const res = await fetch(`${apiBase}/api/policy/windows`);
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
-      setWindowsResult(JSON.stringify(data, null, 2));
+      setWindowsResult(data);
     } catch (e) {
       setWindowsResult(e instanceof Error ? e.message : "加载失败");
     } finally {
@@ -696,17 +854,11 @@ export default function App() {
     setHiddenResult(null);
     try {
       if (isStaticDemo) {
-        setHiddenResult(
-          JSON.stringify(
-            {
-              note: "静态演示数据（未连接后端）",
-              hit_count: 1,
-              rows: [{ student_id: "2023001", risk_level: "high", reasons: ["连续低消费", "高频食堂消费"] }],
-            },
-            null,
-            2
-          )
-        );
+        setHiddenResult({
+          note: "静态演示数据（未连接后端）",
+          hit_count: 1,
+          rows: [{ student_id: "2023001", risk_level: "high", reasons: ["连续低消费", "高频食堂消费"] }],
+        });
         return;
       }
       const body = JSON.parse(hiddenJson) as { rows: unknown[] };
@@ -717,7 +869,7 @@ export default function App() {
       });
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
-      setHiddenResult(JSON.stringify(data, null, 2));
+      setHiddenResult(data);
     } catch (e) {
       setHiddenResult(e instanceof Error ? e.message : "识别失败");
     } finally {
@@ -730,17 +882,11 @@ export default function App() {
     setPrecheckResult(null);
     try {
       if (isStaticDemo) {
-        setPrecheckResult(
-          JSON.stringify(
-            {
-              note: "静态演示数据（未连接后端）",
-              eligible_count: 1,
-              exception_count: 1,
-            },
-            null,
-            2
-          )
-        );
+        setPrecheckResult({
+          note: "静态演示数据（未连接后端）",
+          eligible_count: 1,
+          exception_count: 1,
+        });
         return;
       }
       const body = JSON.parse(precheckJson) as { rows: unknown[] };
@@ -751,7 +897,7 @@ export default function App() {
       });
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
-      setPrecheckResult(JSON.stringify(data, null, 2));
+      setPrecheckResult(data);
     } catch (e) {
       setPrecheckResult(e instanceof Error ? e.message : "预审失败");
     } finally {
@@ -792,28 +938,22 @@ export default function App() {
     setDashboardResult(null);
     try {
       if (isStaticDemo) {
-        setDashboardResult(
-          JSON.stringify(
-            {
-              note: "静态演示数据（未连接后端）",
-              applications_total: 1284,
-              reviewed: 1162,
-              pending: 122,
-              colleges_completion: [
-                { college: "计算机学院", rate: 0.94 },
-                { college: "机电工程学院", rate: 0.91 },
-              ],
-            },
-            null,
-            2
-          )
-        );
+        setDashboardResult({
+          note: "静态演示数据（未连接后端）",
+          applications_total: 1284,
+          reviewed: 1162,
+          pending: 122,
+          colleges_completion: [
+            { college: "计算机学院", rate: 0.94 },
+            { college: "机电工程学院", rate: 0.91 },
+          ],
+        });
         return;
       }
       const res = await fetch(`${apiBase}/api/dashboard/summary`);
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
-      setDashboardResult(JSON.stringify(data, null, 2));
+      setDashboardResult(data);
     } catch (e) {
       setDashboardResult(e instanceof Error ? e.message : "加载失败");
     } finally {
@@ -830,6 +970,14 @@ export default function App() {
     document.documentElement.setAttribute("data-theme", theme);
     localStorage.setItem("gdut_aid_theme", theme);
   }, [theme]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(QUICK_TOPICS_VISIBLE_KEY, quickTopicsVisible ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  }, [quickTopicsVisible]);
 
   const submitFeedback = () => {
     if (!fbTopic.trim() || !fbContent.trim()) return;
@@ -869,17 +1017,49 @@ export default function App() {
         aria-label="站点导航"
       >
         <div className="sidebar-brand">
-          <span className="sidebar-brand-title">资助服务</span>
-          <span className="sidebar-brand-sub">广工 · 智能体</span>
+          <span className="sidebar-brand-title">广工学工数智助手</span>
+          <span className="sidebar-brand-sub">广东工业大学 · 学工场景一站式</span>
         </div>
         <nav className="sidebar-nav">
+          <button
+            type="button"
+            className={`sidebar-link ${mainView === "chat" ? "active" : ""}`}
+            onClick={() => navigateView("chat")}
+          >
+            <span className="sidebar-link-main">政策问答</span>
+            <span className="sidebar-link-sub">7×24 资助政策咨询</span>
+          </button>
+          <button
+            type="button"
+            className={`sidebar-link ${mainView === "hongfan" ? "active" : ""}`}
+            onClick={() => navigateView("hongfan")}
+          >
+            <span className="sidebar-link-main">红帆知海</span>
+            <span className="sidebar-link-sub">思政课本侧重 · 示例题库</span>
+          </button>
+          <button
+            type="button"
+            className={`sidebar-link ${mainView === "soul_window" ? "active" : ""}`}
+            onClick={() => navigateView("soul_window")}
+          >
+            <span className="sidebar-link-main">心灵之窗</span>
+            <span className="sidebar-link-sub">情感与心理陪伴（大模型）</span>
+          </button>
+          <button
+            type="button"
+            className={`sidebar-link ${mainView === "hongge" ? "active" : ""}`}
+            onClick={() => navigateView("hongge")}
+          >
+            <span className="sidebar-link-main">红歌灵境</span>
+            <span className="sidebar-link-sub">外链听学唱 · 五首经典</span>
+          </button>
           <button
             type="button"
             className={`sidebar-link ${mainView === "tools" ? "active" : ""}`}
             onClick={() => navigateView("tools")}
           >
             <span className="sidebar-link-main">智能工具</span>
-            <span className="sidebar-link-sub">咨询、测算、预审与推送</span>
+            <span className="sidebar-link-sub">审查、测算、匹配、预审等</span>
           </button>
           <button
             type="button"
@@ -932,7 +1112,9 @@ export default function App() {
         </nav>
       </aside>
 
-      <div className="main-column layout layout-wide">
+      <div
+        className={`main-column layout layout-wide${mainView === "chat" || mainView === "hongfan" || mainView === "soul_window" || mainView === "hongge" ? " chat-pure" : ""}`}
+      >
         <div className="mobile-topbar">
           <button
             type="button"
@@ -944,6 +1126,10 @@ export default function App() {
             菜单
           </button>
           <span className="mobile-topbar-title">
+            {mainView === "chat" && "政策问答"}
+            {mainView === "hongfan" && "红帆知海"}
+            {mainView === "soul_window" && "心灵之窗"}
+            {mainView === "hongge" && "红歌灵境"}
             {mainView === "tools" && "智能工具"}
             {mainView === "policy" && "资助文件与政策"}
             {mainView === "contacts" && "校区联系方式"}
@@ -963,6 +1149,442 @@ export default function App() {
           </button>
         </div>
 
+      {mainView === "chat" ? (
+        <>
+          {demoMode && (
+            <div className="demo-banner" role="status">
+              {isStaticDemo
+                ? "演示模式：当前为静态展示站（GitHub Pages），接口调用使用本地示例数据。"
+                : "演示模式：后端未配置大模型密钥，问答为示例文案。配置 OPENAI_API_KEY 后可启用智能生成。"}
+            </div>
+          )}
+          <div className="chat-slim-header">
+            <div className="chat-slim-brand">
+              <AgentAvatar className="logo logo-sm" alt="广东工业大学校徽" />
+              <h1 className="chat-slim-title">资助政策咨询</h1>
+            </div>
+            <button
+              type="button"
+              className="theme-toggle-btn"
+              onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))}
+              aria-label={theme === "light" ? "切换到深色夜间版" : "切换到浅色正式版"}
+              title={theme === "light" ? "切换到深色夜间版" : "切换到浅色正式版"}
+            >
+              {theme === "light" ? "🌙 夜间版" : "🌞 浅色"}
+            </button>
+          </div>
+
+          <main className="chat-panel">
+            <div className="messages">
+              {messages.map((msg, i) => (
+                <div
+                  key={i}
+                  className={`bubble-row ${msg.role === "user" ? "user" : "assistant"}`}
+                >
+                  {msg.role === "assistant" && (
+                    <AgentAvatar className="bubble-avatar" alt="助手头像" />
+                  )}
+                  <div className={`bubble ${msg.role}`}>
+                    <div className="bubble-label">
+                      {msg.role === "user" ? "你" : "助手"}
+                    </div>
+                    <div className="bubble-text">{msg.content}</div>
+                  </div>
+                </div>
+              ))}
+              {loading && (
+                <div className="bubble-row assistant">
+                  <AgentAvatar className="bubble-avatar" alt="助手头像" />
+                  <div className="bubble assistant thinking">正在思考…</div>
+                </div>
+              )}
+              <div ref={bottomRef} />
+            </div>
+
+            {quickTopicsVisible ? (
+              <div className="quick-options quick-options-pure" aria-label="快捷主题">
+                <div className="quick-options-head">
+                  <span className="quick-options-label">快捷主题</span>
+                  <button
+                    type="button"
+                    className="text-link quick-options-hide-btn"
+                    onClick={() => setQuickTopicsVisible(false)}
+                    aria-expanded={true}
+                  >
+                    隐藏
+                  </button>
+                </div>
+                <div className="quick-options-grid">
+                  {QUICK_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      className="quick-option-btn"
+                      onClick={() => pickQuickOption(opt)}
+                      disabled={loading}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="quick-options quick-options-collapsed quick-options-pure">
+                <button
+                  type="button"
+                  className="text-link"
+                  onClick={() => setQuickTopicsVisible(true)}
+                  aria-expanded="false"
+                >
+                  显示快捷主题
+                </button>
+              </div>
+            )}
+
+            {error && <div className="error-banner">{error}</div>}
+
+            <form
+              className="composer"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void send(input);
+              }}
+            >
+              <textarea
+                rows={2}
+                placeholder="输入你的问题…（Enter 发送，Shift+Enter 换行）"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    void send(input);
+                  }
+                }}
+                disabled={loading}
+              />
+              <button type="submit" className="send-btn" disabled={loading}>
+                发送
+              </button>
+            </form>
+          </main>
+        </>
+      ) : mainView === "hongfan" ? (
+        <>
+          {(hfDemoMode || isStaticDemo) && (
+            <div className="demo-banner" role="status">
+              {isStaticDemo
+                ? "静态演示站：红帆知海不会请求后端 API。"
+                : "演示模式：未接通大模型或上游限制时，为固定说明文案。"}
+            </div>
+          )}
+          <div className="chat-slim-header">
+            <div className="chat-slim-brand">
+              <AgentAvatar className="logo logo-sm" alt="广东工业大学校徽" />
+              <h1 className="chat-slim-title">红帆知海</h1>
+            </div>
+            <button
+              type="button"
+              className="theme-toggle-btn"
+              onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))}
+              aria-label={theme === "light" ? "切换到深色夜间版" : "切换到浅色正式版"}
+              title={theme === "light" ? "切换到深色夜间版" : "切换到浅色正式版"}
+            >
+              {theme === "light" ? "🌙 夜间版" : "🌞 浅色"}
+            </button>
+          </div>
+
+          <p className="hongfan-scope-note">
+            先选读本侧重（可选「不限」）可筛选下方题目；题库由{" "}
+            <code className="inline-code">01历年真题及解析/hongfan-bank.json</code>{" "}
+            同步到前端（见仓库内同步脚本）。
+          </p>
+
+          <div className="course-chip-row" role="group" aria-label="可选课本侧重">
+            <span className="course-chip-row-label">读本侧重</span>
+            <button
+              type="button"
+              className={`course-chip ${hfCourseTag === null ? "active" : ""}`}
+              onClick={() => setHfCourseTag(null)}
+            >
+              不限
+            </button>
+            {HONGFAN_COURSES.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                className={`course-chip ${hfCourseTag === c.id ? "active" : ""}`}
+                onClick={() => setHfCourseTag(c.id)}
+                title={c.full}
+              >
+                {c.short}
+              </button>
+            ))}
+          </div>
+
+          <div className="hongfan-tab-row" role="tablist" aria-label="红帆知海子页面">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={hfTab === "chat"}
+              className={`hongfan-tab ${hfTab === "chat" ? "active" : ""}`}
+              onClick={() => setHfTab("chat")}
+            >
+              对话
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={hfTab === "quiz"}
+              className={`hongfan-tab ${hfTab === "quiz" ? "active" : ""}`}
+              onClick={() => setHfTab("quiz")}
+            >
+              题库练习
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={hfTab === "materials"}
+              className={`hongfan-tab ${hfTab === "materials" ? "active" : ""}`}
+              onClick={() => setHfTab("materials")}
+            >
+              学习材料
+            </button>
+          </div>
+
+          {hfTab === "quiz" && <HongfanQuizPanel pool={hongfanBankFiltered} />}
+
+          {hfTab === "materials" && (
+            <LearningMaterialsPanel apiBase={apiBase} staticSite={learningMaterialsStatic} />
+          )}
+
+          {hfTab === "chat" && (
+          <details className="hongfan-sample-details">
+            <summary>
+              题库（共 {HONGFAN_BANK_ITEMS.length} 题
+              {hfCourseTag ? ` · 当前筛选 ${hongfanBankFiltered.length} 题` : ""}）
+            </summary>
+            <p className="hongfan-sample-hint">
+              在本机「01历年真题及解析」目录放置 <code className="inline-code">hongfan-bank.json</code>
+              后运行 <code className="inline-code">python scripts/sync_hongfan_bank.py</code>{" "}
+              再执行 <code className="inline-code">npm run dev</code>。仅使用有权使用的材料。
+            </p>
+            {hongfanBankFiltered.length === 0 ? (
+              <p className="hongfan-sample-hint">
+                当前筛选无题目。请同步题库 JSON，或切换「不限」读本侧重。
+              </p>
+            ) : (
+              <div className="hongfan-bank-root">
+                {HONGFAN_COURSES.map((c) => {
+                  const rows = hongfanBankFiltered.filter((it) => it.courseId === c.id);
+                  if (!rows.length) return null;
+                  return (
+                    <section key={c.id} className="hongfan-bank-block">
+                      <h3 className="hongfan-bank-block-title">
+                        {c.short} · {c.full}
+                      </h3>
+                      <ul className="hongfan-bank-list">
+                        {rows.map((item) => (
+                          <li key={item.id} className="hongfan-bank-row">
+                            <button
+                              type="button"
+                              className="hongfan-bank-insert"
+                              onClick={() => pickHongfanBankItem(item)}
+                              disabled={hfLoading}
+                            >
+                              插入
+                            </button>
+                            <span className="hongfan-bank-q" title={item.question}>
+                              {item.question.length > 96 ? `${item.question.slice(0, 96)}…` : item.question}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </section>
+                  );
+                })}
+              </div>
+            )}
+          </details>
+          )}
+
+          {hfTab === "chat" && (
+          <main className="chat-panel">
+            <div className="messages">
+              {hfMessages.map((msg, i) => (
+                <div
+                  key={i}
+                  className={`bubble-row ${msg.role === "user" ? "user" : "assistant"}`}
+                >
+                  {msg.role === "assistant" && (
+                    <AgentAvatar className="bubble-avatar" alt="助手头像" />
+                  )}
+                  <div className={`bubble ${msg.role}`}>
+                    <div className="bubble-label">
+                      {msg.role === "user" ? "你" : "助手"}
+                    </div>
+                    <div className="bubble-text">{msg.content}</div>
+                  </div>
+                </div>
+              ))}
+              {hfLoading && (
+                <div className="bubble-row assistant">
+                  <AgentAvatar className="bubble-avatar" alt="助手头像" />
+                  <div className="bubble assistant thinking">正在思考…</div>
+                </div>
+              )}
+              <div ref={hfBottomRef} />
+            </div>
+
+            {hfError && <div className="error-banner">{hfError}</div>}
+
+            <form
+              className="composer"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void sendHongfan(hfInput);
+              }}
+            >
+              <textarea
+                rows={2}
+                placeholder="输入你的问题…（Enter 发送，Shift+Enter 换行）"
+                value={hfInput}
+                onChange={(e) => setHfInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    void sendHongfan(hfInput);
+                  }
+                }}
+                disabled={hfLoading}
+              />
+              <button type="submit" className="send-btn" disabled={hfLoading}>
+                发送
+              </button>
+            </form>
+          </main>
+          )}
+
+          <p className="tools-back-hint">
+            <button type="button" className="text-link" onClick={() => navigateView("chat")}>
+              ← 返回政策问答
+            </button>
+          </p>
+        </>
+      ) : mainView === "soul_window" ? (
+        <>
+          {(soulDemoMode || isStaticDemo) && (
+            <div className="demo-banner" role="status">
+              {isStaticDemo
+                ? "静态演示站：心灵之窗不会请求后端 API。"
+                : "演示模式：未接通大模型时，为固定说明文案。配置 OPENAI_API_KEY 并对接 DeepSeek 等兼容接口后可使用智能回复。"}
+            </div>
+          )}
+          <div className="chat-slim-header">
+            <div className="chat-slim-brand">
+              <AgentAvatar className="logo logo-sm" alt="广东工业大学校徽" />
+              <h1 className="chat-slim-title">心灵之窗</h1>
+            </div>
+            <button
+              type="button"
+              className="theme-toggle-btn"
+              onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))}
+              aria-label={theme === "light" ? "切换到深色夜间版" : "切换到浅色正式版"}
+              title={theme === "light" ? "切换到深色夜间版" : "切换到浅色正式版"}
+            >
+              {theme === "light" ? "🌙 夜间版" : "🌞 浅色"}
+            </button>
+          </div>
+
+          <p className="soul-window-scope-note">
+            本栏目用于情绪倾诉与心理科普向陪伴，<strong>不能替代</strong>学校心理咨询或医疗。遇危机请拨打
+            <strong> 110 / 120 </strong>或心理援助热线，并联系本校心理健康教育与咨询中心。
+          </p>
+
+          <main className="chat-panel soul-window-panel">
+            <div className="messages">
+              {soulMessages.map((msg, i) => (
+                <div
+                  key={i}
+                  className={`bubble-row ${msg.role === "user" ? "user" : "assistant"}`}
+                >
+                  {msg.role === "assistant" && (
+                    <AgentAvatar className="bubble-avatar" alt="心灵之窗助手" />
+                  )}
+                  <div className={`bubble ${msg.role}`}>
+                    <div className="bubble-label">{msg.role === "user" ? "你" : "心灵之窗"}</div>
+                    <div className="bubble-text">{msg.content}</div>
+                  </div>
+                </div>
+              ))}
+              {soulLoading && (
+                <div className="bubble-row assistant">
+                  <AgentAvatar className="bubble-avatar" alt="心灵之窗助手" />
+                  <div className="bubble assistant thinking">正在倾听与思考…</div>
+                </div>
+              )}
+              <div ref={soulBottomRef} />
+            </div>
+
+            <div className="quick-options quick-options-pure soul-quick-topics" aria-label="倾诉入口">
+              <span className="quick-options-label">想说的话（示例）</span>
+              <div className="quick-options-grid">
+                {SOUL_QUICK_TOPICS.map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    className="quick-option-btn"
+                    onClick={() => void sendSoul(opt.text)}
+                    disabled={soulLoading}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {soulError && <div className="error-banner">{soulError}</div>}
+
+            <form
+              className="composer"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void sendSoul(soulInput);
+              }}
+            >
+              <textarea
+                rows={2}
+                placeholder="在这里说说你的感受…（Enter 发送，Shift+Enter 换行）"
+                value={soulInput}
+                onChange={(e) => setSoulInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    void sendSoul(soulInput);
+                  }
+                }}
+                disabled={soulLoading}
+              />
+              <button type="submit" className="send-btn" disabled={soulLoading}>
+                发送
+              </button>
+            </form>
+          </main>
+
+          <p className="tools-back-hint">
+            <button type="button" className="text-link" onClick={() => navigateView("chat")}>
+              ← 返回政策问答
+            </button>
+          </p>
+        </>
+      ) : mainView === "hongge" ? (
+        <HonggeLingjingPanel
+          theme={theme}
+          onToggleTheme={() => setTheme((t) => (t === "light" ? "dark" : "light"))}
+          onBack={() => navigateView("chat")}
+        />
+      ) : (
+        <>
       <header className="header">
         {demoMode && (
           <div className="demo-banner" role="status">
@@ -974,9 +1596,9 @@ export default function App() {
         <div className="brand">
           <AgentAvatar className="logo" alt="广东工业大学校徽" />
           <div>
-            <h1>广东工业大学 · 资助智能体</h1>
+            <h1>广工学工数智助手</h1>
             <p className="subtitle">
-              政策咨询、资格预审、资助匹配、进度跟踪的一体化学生资助平台
+              资助政策、思政学习、心理陪伴、红色文化与智能工具一体的学工智能服务演示
             </p>
           </div>
         </div>
@@ -1010,13 +1632,6 @@ export default function App() {
       {mainView === "tools" && (
         <>
       <nav className="tabs" aria-label="功能切换">
-        <button
-          type="button"
-          className={`tab-btn ${tab === "chat" ? "active" : ""}`}
-          onClick={() => setTab("chat")}
-        >
-          7×24 政策问答
-        </button>
         <button
           type="button"
           className={`tab-btn ${tab === "screen" ? "active" : ""}`}
@@ -1054,79 +1669,11 @@ export default function App() {
         </button>
       </nav>
 
-      {tab === "chat" && (
-        <main className="chat-panel">
-          <div className="messages">
-            {messages.map((msg, i) => (
-              <div
-                key={i}
-                className={`bubble-row ${msg.role === "user" ? "user" : "assistant"}`}
-              >
-                {msg.role === "assistant" && (
-                  <AgentAvatar className="bubble-avatar" alt="助手头像" />
-                )}
-                <div className={`bubble ${msg.role}`}>
-                  <div className="bubble-label">
-                    {msg.role === "user" ? "你" : "助手"}
-                  </div>
-                  <div className="bubble-text">{msg.content}</div>
-                </div>
-              </div>
-            ))}
-            {loading && (
-              <div className="bubble-row assistant">
-                <AgentAvatar className="bubble-avatar" alt="助手头像" />
-                <div className="bubble assistant thinking">正在思考…</div>
-              </div>
-            )}
-            <div ref={bottomRef} />
-          </div>
-
-          <div className="quick-options" aria-label="快捷主题">
-            <span className="quick-options-label">可选主题（点击后自动回复）</span>
-            <div className="quick-options-grid">
-              {QUICK_OPTIONS.map((opt) => (
-                <button
-                  key={opt.id}
-                  type="button"
-                  className="quick-option-btn"
-                  onClick={() => pickQuickOption(opt)}
-                  disabled={loading}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {error && <div className="error-banner">{error}</div>}
-
-          <form
-            className="composer"
-            onSubmit={(e) => {
-              e.preventDefault();
-              void send(input);
-            }}
-          >
-            <textarea
-              rows={2}
-              placeholder="输入你的问题…（Enter 发送，Shift+Enter 换行）"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  void send(input);
-                }
-              }}
-              disabled={loading}
-            />
-            <button type="submit" className="send-btn" disabled={loading}>
-              发送
-            </button>
-          </form>
-        </main>
-      )}
+      <p className="tools-back-hint">
+        <button type="button" className="text-link" onClick={() => navigateView("chat")}>
+          ← 返回政策问答
+        </button>
+      </p>
 
       {tab === "screen" && (
         <section className="tool-panel">
@@ -1153,9 +1700,7 @@ export default function App() {
               {screenLoading ? "筛查中…" : "运行筛查"}
             </button>
           </div>
-          {screenResult && (
-            <pre className="json-out">{screenResult}</pre>
-          )}
+          {screenResult != null && <ToolResultVisual kind="screen" data={screenResult} />}
         </section>
       )}
 
@@ -1242,9 +1787,7 @@ export default function App() {
                 {povertyLoading ? "分析中…" : "评估风险"}
               </button>
             </div>
-            {povertyResult && (
-              <pre className="json-out">{povertyResult}</pre>
-            )}
+            {povertyResult != null && <ToolResultVisual kind="poverty" data={povertyResult} />}
           </div>
 
           <div className="insight-block insight-divider">
@@ -1313,7 +1856,7 @@ export default function App() {
                 {recLoading ? "生成中…" : "生成推荐"}
               </button>
             </div>
-            {recResult && <pre className="json-out">{recResult}</pre>}
+            {recResult != null && <ToolResultVisual kind="rec" data={recResult} />}
           </div>
         </section>
       )}
@@ -1470,7 +2013,7 @@ export default function App() {
               {calcLoading ? "试算中…" : "开始试算"}
             </button>
           </div>
-          {calcResult && <pre className="json-out">{calcResult}</pre>}
+          {calcResult != null && <ToolResultVisual kind="calc" data={calcResult} />}
         </section>
       )}
 
@@ -1713,22 +2256,22 @@ export default function App() {
             </button>
           </div>
 
-          {matchResult && (
+          {matchResult != null && (
             <>
               <h3 className="tool-h3">匹配结果</h3>
-              <pre className="json-out">{matchResult}</pre>
+              <ToolResultVisual kind="match" data={matchResult} />
             </>
           )}
-          {pushResult && (
+          {pushResult != null && (
             <>
               <h3 className="tool-h3">智能推送（演示）</h3>
-              <pre className="json-out">{pushResult}</pre>
+              <ToolResultVisual kind="push" data={pushResult} />
             </>
           )}
-          {windowsResult && (
+          {windowsResult != null && (
             <>
               <h3 className="tool-h3">窗口期归纳</h3>
-              <pre className="json-out">{windowsResult}</pre>
+              <ToolResultVisual kind="windows" data={windowsResult} />
             </>
           )}
         </section>
@@ -1761,7 +2304,7 @@ export default function App() {
                 {hiddenLoading ? "识别中…" : "运行识别"}
               </button>
             </div>
-            {hiddenResult && <pre className="json-out">{hiddenResult}</pre>}
+            {hiddenResult != null && <ToolResultVisual kind="hidden" data={hiddenResult} />}
           </div>
 
           <div className="insight-block insight-divider">
@@ -1795,7 +2338,7 @@ export default function App() {
                 {exporting ? "导出中…" : "导出 Excel 清单"}
               </button>
             </div>
-            {precheckResult && <pre className="json-out">{precheckResult}</pre>}
+            {precheckResult != null && <ToolResultVisual kind="precheck" data={precheckResult} />}
           </div>
 
           <div className="insight-block insight-divider">
@@ -1813,7 +2356,7 @@ export default function App() {
                 {dashboardLoading ? "加载中…" : "加载看板数据"}
               </button>
             </div>
-            {dashboardResult && <pre className="json-out">{dashboardResult}</pre>}
+            {dashboardResult != null && <ToolResultVisual kind="dashboard" data={dashboardResult} />}
           </div>
         </section>
       )}
@@ -1896,10 +2439,10 @@ export default function App() {
                 setTab("ops");
               }}
             >
-              打开智能工具中的完整看板
+              打开智能工具（预审与看板）
             </button>
           </div>
-          {dashboardResult && <pre className="json-out">{dashboardResult}</pre>}
+          {dashboardResult != null && <ToolResultVisual kind="dashboard" data={dashboardResult} />}
         </section>
       )}
 
@@ -1992,7 +2535,7 @@ export default function App() {
         <section className="tool-panel portal-page">
           <h2 className="tool-h2">后台管理平台</h2>
           <p className="tool-intro">
-            本应用为<strong>资助政策智能体演示前端</strong>，不包含独立的管理员后台。若需正式「后台管理平台」，请在服务端单独部署管理端（身份认证、角色权限、审计日志、与学工数据对接），并通过环境变量配置仅内网或 VPN
+            本应用为<strong>广工学工数智助手演示前端</strong>，不包含独立的管理员后台。若需正式「后台管理平台」，请在服务端单独部署管理端（身份认证、角色权限、审计日志、与学工数据对接），并通过环境变量配置仅内网或 VPN
             可访问。
           </p>
           <ul className="portal-bullet-list">
@@ -2022,6 +2565,8 @@ export default function App() {
             </button>
           </div>
         </section>
+      )}
+        </>
       )}
       </div>
     </div>

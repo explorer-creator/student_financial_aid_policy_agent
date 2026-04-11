@@ -1,20 +1,48 @@
+import logging
+
 import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 
+from app.brain import brain_status_dict, resolve_brain
 from app.config import settings
+from app.hongfan_context import HONGFAN_COURSE_LABELS, HONGFAN_SYSTEM_PROMPT, hongfan_course_line
 from app.policy_context import SYSTEM_PROMPT
-from app.routers import intelligence
+from app.psyche_context import SOUL_WINDOW_SYSTEM_PROMPT
+from app.routers import intelligence, learning_materials
 
-app = FastAPI(title="广东工业大学学生资助政策智能体 API", version="0.1.0")
+
+class UnhandledExceptionMiddleware(BaseHTTPMiddleware):
+    """避免未捕获异常变成纯文本 500；仍让 HTTPException 走框架默认处理。"""
+
+    async def dispatch(self, request: Request, call_next):
+        try:
+            return await call_next(request)
+        except HTTPException:
+            raise
+        except Exception as exc:  # noqa: BLE001
+            logging.exception("未捕获异常 %s %s", request.method, request.url.path)
+            return JSONResponse(
+                status_code=500,
+                content={"detail": f"{type(exc).__name__}: {exc!s}"},
+            )
+
+
+app = FastAPI(title="广工学工数智助手 API", version="0.1.0")
 app.include_router(intelligence.router, prefix="/api")
+app.include_router(learning_materials.router, prefix="/api")
 
 origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
+app.add_middleware(UnhandledExceptionMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins if origins != ["*"] else ["*"],
-    allow_credentials=True,
+    # 与 allow_origins=* 组合时，True 会导致浏览器拒绝跨域；本 API 不依赖 Cookie，用 False 即可
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -27,6 +55,27 @@ class ChatMessage(BaseModel):
 
 class ChatRequest(BaseModel):
     messages: list[ChatMessage]
+    app_scope: str = Field(
+        default="policy",
+        description="policy=资助政策；hongfan=红帆知海；soul_window=心灵之窗（情感心理陪伴）",
+    )
+    course_tag: str | None = Field(default=None, description="hongfan 时可选读本 id")
+
+    @field_validator("app_scope", mode="before")
+    @classmethod
+    def normalize_app_scope(cls, v: object) -> str:
+        if v is None or (isinstance(v, str) and not str(v).strip()):
+            return "policy"
+        s = str(v).strip().lower()
+        return s if s in ("policy", "hongfan", "soul_window") else "policy"
+
+    @field_validator("course_tag", mode="before")
+    @classmethod
+    def normalize_course_tag(cls, v: object) -> str | None:
+        if v is None or (isinstance(v, str) and not str(v).strip()):
+            return None
+        s = str(v).strip()
+        return s if s in HONGFAN_COURSE_LABELS else None
 
 
 class ChatResponse(BaseModel):
@@ -37,6 +86,12 @@ class ChatResponse(BaseModel):
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/api/brain/status")
+def brain_status():
+    """是否已接通大模型大脑（OpenAI 兼容或 Ollama）。"""
+    return brain_status_dict()
 
 
 def _demo_reply(user_text: str) -> str:
@@ -50,7 +105,7 @@ def _demo_reply(user_text: str) -> str:
         "",
         f"您提到的问题摘要：「{user_text[:200]}{'…' if len(user_text) > 200 else ''}」",
         "",
-        "配置环境变量 OPENAI_API_KEY 并重启后端后，可获得由大模型结合知识库的个性化回答。",
+        "配置 OPENAI_API_KEY（云端大脑），或安装 Ollama 并设置 OLLAMA_BASE_URL（本地大脑），重启后端后可获得大模型结合知识库的个性化回答。",
     ]
     if any(k in t for k in ("助学金", "困难", "家庭经济")):
         lines.insert(
@@ -72,38 +127,162 @@ def _demo_reply(user_text: str) -> str:
     return "\n".join(lines)
 
 
+def _soul_window_demo_reply(user_text: str) -> str:
+    t = user_text.strip()
+    head = (
+        "【心灵之窗·演示模式】当前未接通大模型（未配置 OPENAI_API_KEY 或大脑不可用），以下为固定说明，无法针对你的具体情况做个性化回应。\n\n"
+    )
+    body = (
+        "你愿意说出来，这本身就很不容易。若你正感到持续低落、焦虑或人际困扰，建议优先联系广东工业大学心理健康教育与咨询中心（预约方式与开放时间以学校官网或学院通知为准），或当地医院心理科/精神科获得专业评估。\n\n"
+        "若你此刻有伤害自己或他人的冲动，请立即联系身边可信的人，或拨打 110 / 120；也可拨打全国心理援助热线（如 400-161-9995，以实际公布为准）。\n\n"
+    )
+    tail = f"你刚才分享的内容摘要：「{t[:200]}{'…' if len(t) > 200 else ''}」\n\n配置 API 密钥并重启后端后，可在此获得由模型生成的倾听与建议（仍不能替代专业心理咨询）。"
+    if any(k in t for k in ("睡不着", "失眠", "焦虑", "抑郁", "想哭")):
+        body += "\n（提示）演示模式下无法做睡眠或情绪「诊断」；规律作息、适度运动与线下咨询更值得优先考虑。\n\n"
+    return head + body + tail
+
+
+def _hongfan_demo_reply(user_text: str, course_tag: str | None) -> str:
+    label = HONGFAN_COURSE_LABELS.get(course_tag or "", "")
+    head = "【红帆知海·演示模式】未接通大模型，以下为固定说明。"
+    course_line = f"\n你选择的读本侧重：{label}" if label else "\n（未选择读本侧重，可点击上方课本后再提问）"
+    tail = (
+        "\n\n可在此做概念梳理、易混点对比与复习提纲。配置 OPENAI_API_KEY 并重启后端后，可获得生成式讲解。"
+        "\n\n说明：不提供任何教材或题库的逐页电子全文；正式学习与考试请以课堂与正版教材为准。"
+        f"\n\n你的提问摘要：「{user_text[:180]}{'…' if len(user_text) > 180 else ''}」"
+    )
+    return head + course_line + tail
+
+
+def _extract_assistant_text(data: dict) -> str:
+    """解析 OpenAI 兼容 chat/completions JSON；兼容 content 为 str / list、message 非 dict。"""
+    choices = data.get("choices")
+    if not choices:
+        raise KeyError("无 choices")
+    msg = choices[0].get("message")
+    if msg is None:
+        raise KeyError("无 message")
+    if isinstance(msg, str):
+        s = msg.strip()
+        if s:
+            return s
+        raise KeyError("message 为空字符串")
+    if not isinstance(msg, dict):
+        raise TypeError(f"message 类型异常: {type(msg)!r}")
+
+    raw = msg.get("content")
+    if raw is None:
+        text = ""
+    elif isinstance(raw, str):
+        text = raw
+    elif isinstance(raw, list):
+        parts: list[str] = []
+        for p in raw:
+            if isinstance(p, dict) and p.get("type") == "text":
+                parts.append(str(p.get("text", "")))
+            elif isinstance(p, dict) and "text" in p:
+                parts.append(str(p.get("text", "")))
+        text = "".join(parts)
+    else:
+        text = str(raw)
+    text = text.strip()
+    if not text:
+        rc = msg.get("reasoning_content")
+        text = (rc if isinstance(rc, str) else str(rc or "")).strip()
+    if not text:
+        raise KeyError("choices[0].message 无可用文本")
+    return text
+
+
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat(body: ChatRequest):
+    try:
+        return await _chat_core(body)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.exception("POST /api/chat 未捕获异常")
+        raise HTTPException(
+            status_code=502,
+            detail=f"服务器处理失败: {type(e).__name__}: {e!s}",
+        ) from e
+
+
+async def _chat_core(body: ChatRequest) -> ChatResponse:
     if not body.messages:
         raise HTTPException(status_code=400, detail="messages 不能为空")
 
     user_messages = [m for m in body.messages if m.role == "user"]
     last_user = user_messages[-1].content if user_messages else ""
 
-    if not settings.openai_api_key:
+    scope = body.app_scope if body.app_scope in ("policy", "hongfan", "soul_window") else "policy"
+
+    brain = resolve_brain()
+    if not brain:
+        if scope == "hongfan":
+            return ChatResponse(
+                reply=_hongfan_demo_reply(last_user, body.course_tag),
+                mode="demo",
+            )
+        if scope == "soul_window":
+            return ChatResponse(reply=_soul_window_demo_reply(last_user), mode="demo")
         return ChatResponse(reply=_demo_reply(last_user), mode="demo")
 
+    if scope == "hongfan":
+        system = HONGFAN_SYSTEM_PROMPT + hongfan_course_line(body.course_tag)
+    elif scope == "soul_window":
+        system = SOUL_WINDOW_SYSTEM_PROMPT
+    else:
+        system = SYSTEM_PROMPT
+
+    temperature = 0.55 if scope == "soul_window" else 0.4
     payload = {
-        "model": settings.model,
-        "messages": [{"role": "system", "content": SYSTEM_PROMPT}]
+        "model": brain.model,
+        "messages": [{"role": "system", "content": system}]
         + [{"role": m.role, "content": m.content} for m in body.messages],
-        "temperature": 0.4,
+        "temperature": temperature,
     }
-    headers = {
-        "Authorization": f"Bearer {settings.openai_api_key}",
-        "Content-Type": "application/json",
-    }
-    url = f"{settings.openai_base_url.rstrip('/')}/chat/completions"
-    async with httpx.AsyncClient(timeout=120.0) as client:
-        r = await client.post(url, json=payload, headers=headers)
-    if r.status_code != 200:
+    headers: dict[str, str] = {"Content-Type": "application/json"}
+    if brain.authorization_bearer:
+        headers["Authorization"] = f"Bearer {brain.authorization_bearer}"
+    try:
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            r = await client.post(brain.chat_url, json=payload, headers=headers)
+    except httpx.RequestError as e:
         raise HTTPException(
             status_code=502,
-            detail=f"上游模型错误: {r.status_code} {r.text[:500]}",
+            detail=f"无法连接模型服务（检查网络、代理与 OPENAI_BASE_URL）：{e!s}",
+        ) from e
+
+    if r.status_code != 200:
+        snippet = r.text[:800]
+        if r.status_code == 402 or "Insufficient Balance" in snippet:
+            raise HTTPException(
+                status_code=502,
+                detail=(
+                    "上游账户余额不足（HTTP 402）：请到 DeepSeek 开放平台充值或检查套餐额度后再试；"
+                    "也可暂时清空 OPENAI_API_KEY 走演示模式，或改用本地 Ollama。"
+                    f" 原始响应: {snippet}"
+                ),
+            )
+        raise HTTPException(
+            status_code=502,
+            detail=f"上游模型错误: {r.status_code} {snippet}",
         )
-    data = r.json()
     try:
-        reply = data["choices"][0]["message"]["content"]
-    except (KeyError, IndexError) as e:
-        raise HTTPException(status_code=502, detail=f"解析响应失败: {e}") from e
-    return ChatResponse(reply=reply.strip(), mode="llm")
+        data = r.json()
+    except ValueError:
+        raise HTTPException(
+            status_code=502,
+            detail=f"上游返回非 JSON: {r.text[:400]}",
+        ) from None
+
+    try:
+        reply = _extract_assistant_text(data)
+    except (KeyError, IndexError, TypeError) as e:
+        raise HTTPException(
+            status_code=502,
+            detail=f"解析响应失败: {e!s} 片段={str(data)[:600]}",
+        ) from e
+
+    return ChatResponse(reply=reply, mode="llm")

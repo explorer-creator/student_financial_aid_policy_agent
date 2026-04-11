@@ -1,0 +1,14 @@
+# 在 Netlify：新建站点 → 连接 Git → 使用本文件；构建在 frontend/ 下完成。
+[build]
+  base = "frontend"
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# 单页应用：非静态资源回退到 index.html（Vite 产物中的 /assets/* 仍由 CDN 直出）
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
