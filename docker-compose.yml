@@ -1,9 +1,8 @@
+# 单入口：只映射 frontend:8080；/api、/health、/docs 由前端容器内 Nginx 反代到 backend（勿把 8000 暴露公网）
 services:
   backend:
     build:
       context: ./backend
-    ports:
-      - "8000:8000"
     environment:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}

@@ -103,7 +103,15 @@ npm run dev
 docker compose up --build
 ```
 
-访问：`http://localhost:8080`
+访问：`http://localhost:8080`（**单入口**：`/api`、`/health`、`/docs` 由前端容器内 Nginx 反代到后端，主机不再暴露 `8000` 端口。）
+
+### 香港轻量等自有 VPS（Docker 一个链接）
+
+适合评委在大陆网络直连：见 **`docs/deploy-hongkong-lite.md`**。服务器（Ubuntu）上克隆仓库后执行：
+
+`bash scripts/deploy_hongkong_lite.sh`
+
+（需先在腾讯云「防火墙」放行 **TCP 8080**；生产建议再在主机上加 **HTTPS** 反代到 `127.0.0.1:8080`。）
 
 ## GitHub 开源与静态演示站
 
