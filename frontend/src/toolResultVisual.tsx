@@ -28,6 +28,13 @@ function asObjArray(x: unknown): Record<string, unknown>[] | null {
   return null;
 }
 
+/** 与 asObjArray 类似，但跳过非对象项，避免单行脏数据导致整表无法展示 */
+function asObjArrayLenient(x: unknown): Record<string, unknown>[] | null {
+  if (!Array.isArray(x)) return null;
+  const rows = x.filter((i): i is Record<string, unknown> => isRecord(i));
+  return rows.length ? rows : null;
+}
+
 function NoteBanner({ text }: { text: string }) {
   return (
     <p className="tool-visual-note" role="status">
@@ -610,38 +617,50 @@ function renderPrecheck(data: Record<string, unknown>): ReactNode {
 
 function renderDashboard(data: Record<string, unknown>): ReactNode {
   const note = typeof data.note === "string" ? data.note : null;
-  const progress = asObjArray(data.apply_progress);
-  const colleges = asObjArray(data.college_completion_rate);
-  const appeals = asObjArray(data.pending_appeals);
+  const progress = asObjArrayLenient(data.apply_progress);
+  const colleges = asObjArrayLenient(data.college_completion_rate);
+  const appeals = asObjArrayLenient(data.pending_appeals);
   if (!progress && typeof data.applications_total === "number") {
-    const cc = asObjArray(data.colleges_completion);
+    const cc = asObjArrayLenient(data.colleges_completion);
     return (
-      <>
+      <div className="tool-visual-dashboard">
         {note && <NoteBanner text={note} />}
-        <p className="tool-visual-summary">
+        <p className="tool-visual-summary dashboard-lead">
           演示：累计申请 <strong>{String(data.applications_total)}</strong>，已审核{" "}
           <strong>{String(data.reviewed)}</strong>，待处理 <strong>{String(data.pending)}</strong>。
         </p>
         {cc && (
-          <ul className="tool-visual-bullet">
-            {cc.map((row, i) => (
-              <li key={i}>
-                {String(row.college)}：完成率 {(Number(row.rate) * 100).toFixed(0)}%
-              </li>
-            ))}
-          </ul>
+          <div className="dashboard-section">
+            <h4 className="dashboard-section-title">学院完成率（演示）</h4>
+            <ul className="dashboard-completion-list">
+              {cc.map((row, i) => {
+                const pct = Math.round(Number(row.rate) * 100);
+                return (
+                  <li key={i} className="dashboard-completion-item">
+                    <div className="dashboard-completion-head">
+                      <span className="dashboard-completion-name">{String(row.college)}</span>
+                      <span className="dashboard-completion-pct">{pct}%</span>
+                    </div>
+                    <div className="dashboard-completion-track" aria-hidden>
+                      <div className="dashboard-completion-fill" style={{ width: `${pct}%` }} />
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
         )}
-      </>
+      </div>
     );
   }
   return (
-    <>
+    <div className="tool-visual-dashboard">
       {note && <NoteBanner text={note} />}
       {progress && progress.length > 0 && (
-        <div className="tool-visual-section">
-          <h4 className="tool-visual-h4">申请进度（示例）</h4>
-          <div className="table-wrap tool-visual-table-wrap">
-            <table className="data-table tool-visual-table">
+        <div className="dashboard-section">
+          <h4 className="dashboard-section-title">申请进度（示例）</h4>
+          <div className="table-wrap dashboard-table-wrap tool-visual-table-wrap">
+            <table className="data-table tool-visual-table dashboard-table">
               <thead>
                 <tr>
                   <th>类别</th>
@@ -665,44 +684,68 @@ function renderDashboard(data: Record<string, unknown>): ReactNode {
         </div>
       )}
       {colleges && colleges.length > 0 && (
-        <div className="tool-visual-section">
-          <h4 className="tool-visual-h4">学院材料完成率（示例）</h4>
-          <ul className="tool-visual-bullet">
-            {colleges.map((row, i) => (
-              <li key={i}>
-                <strong>{String(row.college ?? "—")}</strong>：{(Number(row.completion_rate) * 100).toFixed(0)}%
-              </li>
-            ))}
+        <div className="dashboard-section">
+          <h4 className="dashboard-section-title">学院材料完成率（示例）</h4>
+          <ul className="dashboard-completion-list">
+            {colleges.map((row, i) => {
+              const pct = Math.round(Number(row.completion_rate) * 100);
+              return (
+                <li key={i} className="dashboard-completion-item">
+                  <div className="dashboard-completion-head">
+                    <span className="dashboard-completion-name">{String(row.college ?? "—")}</span>
+                    <span className="dashboard-completion-pct">{pct}%</span>
+                  </div>
+                  <div className="dashboard-completion-track" aria-hidden>
+                    <div className="dashboard-completion-fill" style={{ width: `${pct}%` }} />
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}
       {appeals && appeals.length > 0 && (
-        <div className="tool-visual-section">
-          <h4 className="tool-visual-h4">待处理异议 / 工单（示例）</h4>
-          <ul className="tool-visual-card-list">
+        <div className="dashboard-section">
+          <h4 className="dashboard-section-title">待处理异议 / 工单（示例）</h4>
+          <ul className="dashboard-ticket-list">
             {appeals.map((row, i) => (
-              <li key={i} className="tool-visual-card">
-                <div className="tool-visual-card-title">{String(row.ticket_id ?? "—")}</div>
-                <div className="tool-visual-card-meta">
+              <li key={i} className="dashboard-ticket-card">
+                <div className="dashboard-ticket-id">{String(row.ticket_id ?? "—")}</div>
+                <div className="dashboard-ticket-meta">
                   {String(row.college ?? "")} · 已等待 {String(row.days_pending ?? "—")} 天
                 </div>
-                <p className="tool-visual-card-body">{String(row.status ?? "")}</p>
+                <p className="dashboard-ticket-status">{String(row.status ?? "")}</p>
               </li>
             ))}
           </ul>
         </div>
       )}
       {typeof data.disclaimer === "string" && <Disclaimer text={data.disclaimer} />}
-    </>
+      {!(
+        (progress && progress.length > 0) ||
+        (colleges && colleges.length > 0) ||
+        (appeals && appeals.length > 0)
+      ) && (
+        <>
+          <p className="tool-visual-hint">
+            未解析到看板表格数据（apply_progress / college_completion_rate / pending_appeals）。以下为接口返回字段摘要：
+          </p>
+          <FallbackObject data={data} />
+        </>
+      )}
+    </div>
   );
 }
 
 export function ToolResultVisual({ kind, data }: { kind: ToolResultKind; data: unknown }) {
   if (data === null || data === undefined) return null;
   if (typeof data === "string") {
+    const text = data.length > 800 ? `${data.slice(0, 800)}…` : data;
     return (
       <div className="tool-visual-root">
-        <div className="error-banner tool-visual-error">{data}</div>
+        <div className="error-banner tool-visual-error" role="alert">
+          {text}
+        </div>
       </div>
     );
   }
@@ -750,5 +793,7 @@ export function ToolResultVisual({ kind, data }: { kind: ToolResultKind; data: u
       body = <FallbackObject data={data} />;
   }
 
-  return <div className="tool-visual-root">{body}</div>;
+  const rootClass =
+    kind === "dashboard" ? "tool-visual-root tool-visual-dashboard-shell" : "tool-visual-root";
+  return <div className={rootClass}>{body}</div>;
 }

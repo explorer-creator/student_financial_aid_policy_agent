@@ -87,5 +87,3 @@ export const HONGFAN_INTRO =
   "这里是「红帆知海」专用区：面向思政课相关问题的通识答疑与复习梳理。\n\n" +
   "请先点选一本课本侧重（也可不选，直接提问）。题目可从下方题库插入；正式考试以课堂与正版教材为准。";
 
-export const HONGFAN_INTRO_SECOND =
-  "题库自 `01历年真题及解析/hongfan-bank.json` 经 scripts/sync_hongfan_bank.py 同步到前端后打包加载。";

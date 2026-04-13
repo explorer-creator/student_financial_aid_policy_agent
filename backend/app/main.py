@@ -8,10 +8,13 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from app.brain import brain_status_dict, resolve_brain
-from app.config import settings
+from app.brain import BRAIN_API_REVISION, brain_status_dict, resolve_brain
+from app.config import ENV_FILE_PATH, settings
 from app.hongfan_context import HONGFAN_COURSE_LABELS, HONGFAN_SYSTEM_PROMPT, hongfan_course_line
+from app.doc_attachments import suggest_doc_attachments
 from app.policy_context import SYSTEM_PROMPT
+from app.rag_loader import get_rag_chunks_and_sources
+from app.rag_selection import select_relevant_chunks
 from app.psyche_context import SOUL_WINDOW_SYSTEM_PROMPT
 from app.routers import intelligence, learning_materials
 
@@ -78,19 +81,64 @@ class ChatRequest(BaseModel):
         return s if s in HONGFAN_COURSE_LABELS else None
 
 
+class ChatAttachment(BaseModel):
+    label: str
+    filename: str  # 相对于站点根 docs/ 下的文件名
+
+
 class ChatResponse(BaseModel):
     reply: str
     mode: str  # "llm" | "demo"
+    attachments: list[ChatAttachment] | None = None
 
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    return {"status": "ok", "brain_api_revision": BRAIN_API_REVISION}
+
+
+@app.get("/api/meta")
+def api_meta():
+    """用于确认当前进程是否已加载最新后端代码（与 brain 无关时也可看 revision）。"""
+    return {
+        "brain_api_revision": BRAIN_API_REVISION,
+        "env_file_exists": ENV_FILE_PATH.is_file(),
+    }
+
+
+# 看板示例数据单独挂在 main，避免与 intelligence 路由堆叠时排查困难；与原先 /api/dashboard/summary 行为一致
+_DASHBOARD_SUMMARY_DEMO: dict = {
+    "apply_progress": [
+        {"category": "国家奖学金", "submitted": 186, "approved": 174, "rejected": 12},
+        {"category": "国家励志奖学金", "submitted": 912, "approved": 865, "rejected": 47},
+        {"category": "国家助学金", "submitted": 3890, "approved": 3621, "rejected": 269},
+        {"category": "社会奖助学金", "submitted": 624, "approved": 512, "rejected": 112},
+    ],
+    "college_completion_rate": [
+        {"college": "机电工程学院", "completion_rate": 0.92},
+        {"college": "自动化学院", "completion_rate": 0.89},
+        {"college": "计算机学院", "completion_rate": 0.94},
+        {"college": "管理学院", "completion_rate": 0.86},
+        {"college": "材料与能源学院", "completion_rate": 0.9},
+    ],
+    "pending_appeals": [
+        {"ticket_id": "APL-2026-0018", "college": "计算机学院", "days_pending": 2, "status": "待辅导员复核"},
+        {"ticket_id": "APL-2026-0021", "college": "管理学院", "days_pending": 4, "status": "待学院评审组意见"},
+        {"ticket_id": "APL-2026-0030", "college": "机电工程学院", "days_pending": 1, "status": "待资助中心确认"},
+    ],
+    "disclaimer": "示例数据。生产环境应来自业务数据库与流程系统。",
+}
+
+
+@app.get("/api/dashboard/summary")
+def dashboard_summary():
+    """管理看板示例：申请进度、学院完成率、待处理异议。"""
+    return _DASHBOARD_SUMMARY_DEMO
 
 
 @app.get("/api/brain/status")
 def brain_status():
-    """是否已接通大模型大脑（OpenAI 兼容或 Ollama）。"""
+    """是否已接通大模型（OpenAI 兼容接口，如 DeepSeek）。"""
     return brain_status_dict()
 
 
@@ -105,7 +153,7 @@ def _demo_reply(user_text: str) -> str:
         "",
         f"您提到的问题摘要：「{user_text[:200]}{'…' if len(user_text) > 200 else ''}」",
         "",
-        "配置 OPENAI_API_KEY（云端大脑），或安装 Ollama 并设置 OLLAMA_BASE_URL（本地大脑），重启后端后可获得大模型结合知识库的个性化回答。",
+        "配置 OPENAI_API_KEY 与 OPENAI_BASE_URL（如 DeepSeek），重启后端后可获得大模型结合知识库的个性化回答。",
     ]
     if any(k in t for k in ("助学金", "困难", "家庭经济")):
         lines.insert(
@@ -226,7 +274,12 @@ async def _chat_core(body: ChatRequest) -> ChatResponse:
             )
         if scope == "soul_window":
             return ChatResponse(reply=_soul_window_demo_reply(last_user), mode="demo")
-        return ChatResponse(reply=_demo_reply(last_user), mode="demo")
+        atts = suggest_doc_attachments(last_user)
+        return ChatResponse(
+            reply=_demo_reply(last_user),
+            mode="demo",
+            attachments=[ChatAttachment(**a) for a in atts] if atts else None,
+        )
 
     if scope == "hongfan":
         system = HONGFAN_SYSTEM_PROMPT + hongfan_course_line(body.course_tag)
@@ -234,6 +287,11 @@ async def _chat_core(body: ChatRequest) -> ChatResponse:
         system = SOUL_WINDOW_SYSTEM_PROMPT
     else:
         system = SYSTEM_PROMPT
+        ch, src = get_rag_chunks_and_sources()
+        if ch:
+            rag = select_relevant_chunks(last_user, ch, src)
+            if rag:
+                system = f"{SYSTEM_PROMPT}\n\n{rag}"
 
     temperature = 0.55 if scope == "soul_window" else 0.4
     payload = {
@@ -261,7 +319,7 @@ async def _chat_core(body: ChatRequest) -> ChatResponse:
                 status_code=502,
                 detail=(
                     "上游账户余额不足（HTTP 402）：请到 DeepSeek 开放平台充值或检查套餐额度后再试；"
-                    "也可暂时清空 OPENAI_API_KEY 走演示模式，或改用本地 Ollama。"
+                    "也可暂时清空 OPENAI_API_KEY 走演示模式。"
                     f" 原始响应: {snippet}"
                 ),
             )
@@ -285,4 +343,11 @@ async def _chat_core(body: ChatRequest) -> ChatResponse:
             detail=f"解析响应失败: {e!s} 片段={str(data)[:600]}",
         ) from e
 
+    if scope == "policy":
+        atts = suggest_doc_attachments(last_user)
+        return ChatResponse(
+            reply=reply,
+            mode="llm",
+            attachments=[ChatAttachment(**a) for a in atts] if atts else None,
+        )
     return ChatResponse(reply=reply, mode="llm")

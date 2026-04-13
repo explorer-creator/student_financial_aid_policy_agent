@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
+import { suggestPolicyDocAttachments } from "./docAttachmentHints";
 import {
   CAMPUS_CONTACT_BLOCKS,
   MOCK_EVENT_TICKETS,
   POLICY_LINK_GROUPS,
+  docHref,
 } from "./portalData";
 import {
   HONGFAN_BANK_ITEMS,
   HONGFAN_COURSES,
   HONGFAN_INTRO,
-  HONGFAN_INTRO_SECOND,
   hongfanItemsForCourse,
   type HongfanBankItem,
   type HongfanCourseId,
@@ -20,7 +21,8 @@ import { LearningMaterialsPanel } from "./LearningMaterialsPanel";
 import { ToolResultVisual } from "./toolResultVisual";
 
 type Role = "user" | "assistant";
-type Msg = { role: Role; content: string };
+type ChatDocAttachment = { label: string; filename: string };
+type Msg = { role: Role; content: string; attachments?: ChatDocAttachment[] };
 type Tab = "screen" | "insights" | "calculator" | "match" | "ops";
 
 /** 侧栏一级页面（#hash 同步，便于收藏） */
@@ -51,8 +53,48 @@ const MAIN_VIEW_ORDER: MainView[] = [
   "admin",
 ];
 
-type ThemeMode = "light" | "dark";
 const AVATAR_SRC = `${import.meta.env.BASE_URL}gdut-avatar.png`;
+
+function truncateDashboardErr(s: string, max: number): string {
+  return s.length > max ? `${s.slice(0, max)}…` : s;
+}
+
+/** 解析 FastAPI/Starlette 的 JSON 错误体，避免只显示「请求失败 (HTTP 500)」 */
+function dashboardFetchErrorHint(body: string, status: number): string {
+  const t = body.trim();
+  if (!t) {
+    return `请求失败（HTTP ${status}）：响应体为空。请在后端终端查看报错，并确认本机已启动 API（如 uvicorn app.main:app --reload --port 8000）；开发前端时 Vite 会把 /api 代理到 127.0.0.1:8000。`;
+  }
+  if (t.startsWith("{")) {
+    try {
+      const j = JSON.parse(t) as { detail?: unknown };
+      if (j && "detail" in j) {
+        const d = j.detail;
+        if (typeof d === "string") return truncateDashboardErr(d, 520);
+        if (Array.isArray(d)) {
+          const parts = d.map((item) => {
+            if (typeof item === "object" && item !== null && "msg" in item) {
+              return String((item as { msg: unknown }).msg);
+            }
+            return String(item);
+          });
+          return truncateDashboardErr(parts.join("；"), 520);
+        }
+        if (d != null) return truncateDashboardErr(String(d), 520);
+      }
+    } catch {
+      /* 非 JSON，继续 */
+    }
+  }
+  if (
+    t.startsWith("<!") ||
+    /<html[\s>]/i.test(t) ||
+    /<!doctype/i.test(t)
+  ) {
+    return `无法加载看板（HTTP ${status}）：服务器返回了网页而不是 JSON。请确认后端已启动，且 VITE_API_BASE 指向正确 API（开发环境常见为 http://127.0.0.1:8000）。`;
+  }
+  return truncateDashboardErr(t, 400) || `请求失败（HTTP ${status}）`;
+}
 
 function AgentAvatar({ className, alt }: { className: string; alt: string }) {
   const [failed, setFailed] = useState(false);
@@ -83,11 +125,9 @@ function mainViewFromHash(): MainView {
   return MAIN_VIEW_ORDER.includes(raw as MainView) ? (raw as MainView) : "chat";
 }
 
-function preferredThemeFromSystem(): ThemeMode {
-  return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-}
-
 const QUICK_TOPICS_VISIBLE_KEY = "gdut_aid_quick_topics_visible";
+/** 同一会话内仅首次进入展示欢迎层，关闭后写入 sessionStorage */
+const WELCOME_SPLASH_KEY = "gdut_welcome_splash_seen";
 
 function readQuickTopicsVisible(): boolean {
   try {
@@ -215,13 +255,17 @@ async function postChat(
     const err = await res.text();
     throw new Error(err || `请求失败 ${res.status}`);
   }
-  return res.json() as Promise<{ reply: string; mode: string }>;
+  return res.json() as Promise<{
+    reply: string;
+    mode: string;
+    attachments?: ChatDocAttachment[] | null;
+  }>;
 }
 
 const ASSISTANT_INTRO =
   "你好，我是「广工学工数智助手」里的资助政策咨询入口。\n\n" +
   "我可以协助你了解国家与学校层面的奖助学金、助学贷款、绿色通道、勤工助学、困难认定与申诉渠道等信息。回答基于公开政策归纳，个人能否获评、具体金额与时间，请以学校及学院当年正式通知为准。\n\n" +
-  "若在这里无法解决你的问题，请拨打学校学生资助管理中心（大学城校区）电话：020-39322619 或 020-39322610，或发邮件至 xsczdb@gdut.edu.cn；也可先联系所在学院辅导员。\n\n" +
+  "若在这里无法解决你的问题，请拨打揭阳校区资助工作负责老师（谢老师）电话：0663-6603294，或发邮件至 zhongkyxie@gdut.edu.cn；也可先联系所在年级辅导员。\n\n" +
   "更多演示能力（资格审查、计算器、政策匹配等）在侧栏「智能工具」；政策原文与校区联系方式见「资助文件」「校区联系方式」。";
 
 const ASSISTANT_SECOND =
@@ -233,8 +277,7 @@ const SOUL_WINDOW_INTRO =
   "重要说明：对话由人工智能生成，不能替代心理咨询、精神科诊疗或危机干预；不用于诊断或开药。";
 
 const SOUL_WINDOW_SECOND =
-  "若你感到难以承受、出现自伤自杀念头或正在面临紧迫危险，请立即联系身边信任的人，拨打 110 / 120，或心理援助热线（如 400-161-9995，以实际公布为准），并尽快联系学校心理中心或医院急诊。\n\n" +
-  "配置 OPENAI_API_KEY（例如对接 DeepSeek 等兼容接口）并启动后端后，回复将由大模型生成。";
+  "若你感到难以承受、出现自伤自杀念头或正在面临紧迫危险，请立即联系身边信任的人，拨打 110 / 120，或心理援助热线（如 400-161-9995，以实际公布为准），并尽快联系学校心理中心或医院急诊。";
 
 const SOUL_QUICK_TOPICS: { id: string; label: string; text: string }[] = [
   { id: "exam", label: "考试焦虑睡不着", text: "最近考试周压力很大，晚上睡不着，脑子一直转，我该怎么缓解？" },
@@ -346,10 +389,7 @@ export default function App() {
   const [demoMode, setDemoMode] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  const [hfMessages, setHfMessages] = useState<Msg[]>([
-    { role: "assistant", content: HONGFAN_INTRO },
-    { role: "assistant", content: HONGFAN_INTRO_SECOND },
-  ]);
+  const [hfMessages, setHfMessages] = useState<Msg[]>([{ role: "assistant", content: HONGFAN_INTRO }]);
   const [hfInput, setHfInput] = useState("");
   const [hfLoading, setHfLoading] = useState(false);
   const [hfError, setHfError] = useState<string | null>(null);
@@ -449,11 +489,29 @@ export default function App() {
   const [fbContent, setFbContent] = useState("");
   const [fbContact, setFbContact] = useState("");
   const [fbDone, setFbDone] = useState(false);
-  const [theme, setTheme] = useState<ThemeMode>(() => {
-    const saved = localStorage.getItem("gdut_aid_theme");
-    return saved === "dark" || saved === "light" ? saved : preferredThemeFromSystem();
-  });
   const [quickTopicsVisible, setQuickTopicsVisible] = useState(readQuickTopicsVisible);
+
+  const [welcomeSplash, setWelcomeSplash] = useState(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("welcome") === "1" || params.get("splash") === "1") {
+        return true;
+      }
+      return sessionStorage.getItem(WELCOME_SPLASH_KEY) !== "1";
+    } catch {
+      return true;
+    }
+  });
+
+  const dismissWelcomeSplash = useCallback(() => {
+    try {
+      sessionStorage.setItem(WELCOME_SPLASH_KEY, "1");
+    } catch {
+      /* ignore */
+    }
+    setWelcomeSplash(false);
+  }, []);
+  const welcomeCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const buildMatchBody = () => ({
     grade: matchForm.grade,
@@ -535,11 +593,30 @@ export default function App() {
           "1) 侧栏页面（政策链接、校区联系方式、反馈箱、事件进度）\n" +
           "2) 聊天区快捷主题按钮（固定回复）\n\n" +
           "若需实时智能问答，请部署后端并配置 VITE_API_BASE 指向后端地址。";
-        setMessages((m) => [...m, { role: "assistant", content: demoReply }]);
+        const atts = suggestPolicyDocAttachments(trimmed);
+        setMessages((m) => [
+          ...m,
+          {
+            role: "assistant",
+            content: demoReply,
+            attachments: atts.length ? atts : undefined,
+          },
+        ]);
       } else {
         const data = await postChat(history, { appScope: "policy" });
         if (data.mode === "demo") setDemoMode(true);
-        setMessages((m) => [...m, { role: "assistant", content: data.reply }]);
+        const atts =
+          data.attachments && data.attachments.length > 0
+            ? data.attachments
+            : suggestPolicyDocAttachments(trimmed);
+        setMessages((m) => [
+          ...m,
+          {
+            role: "assistant",
+            content: data.reply,
+            attachments: atts.length ? atts : undefined,
+          },
+        ]);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "发送失败");
@@ -631,10 +708,15 @@ export default function App() {
   const pickQuickOption = (opt: QuickOption) => {
     if (loading) return;
     setError(null);
+    const atts = suggestPolicyDocAttachments(`${opt.label}\n${opt.reply}`);
     setMessages((m) => [
       ...m,
       { role: "user", content: opt.label },
-      { role: "assistant", content: opt.reply },
+      {
+        role: "assistant",
+        content: opt.reply,
+        attachments: atts.length ? atts : undefined,
+      },
     ]);
   };
 
@@ -951,11 +1033,22 @@ export default function App() {
         return;
       }
       const res = await fetch(`${apiBase}/api/dashboard/summary`);
-      if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
+      const text = await res.text();
+      if (!res.ok) {
+        throw new Error(dashboardFetchErrorHint(text, res.status));
+      }
+      let data: unknown;
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        throw new Error(
+          "看板接口返回不是合法 JSON（可能被静态站点或首页 HTML 替代）。请确认 GET /api/dashboard/summary 可访问。",
+        );
+      }
       setDashboardResult(data);
     } catch (e) {
-      setDashboardResult(e instanceof Error ? e.message : "加载失败");
+      const raw = e instanceof Error ? e.message : "加载失败";
+      setDashboardResult(raw.length > 600 ? `${raw.slice(0, 600)}…` : raw);
     } finally {
       setDashboardLoading(false);
     }
@@ -967,9 +1060,232 @@ export default function App() {
   }, [mainView]);
 
   useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-    localStorage.setItem("gdut_aid_theme", theme);
-  }, [theme]);
+    document.documentElement.setAttribute("data-theme", "light");
+  }, []);
+
+  useEffect(() => {
+    if (!welcomeSplash) return;
+    const id = window.setTimeout(dismissWelcomeSplash, 4000);
+    return () => clearTimeout(id);
+  }, [welcomeSplash, dismissWelcomeSplash]);
+
+  useEffect(() => {
+    if (!welcomeSplash) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") dismissWelcomeSplash();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [welcomeSplash, dismissWelcomeSplash]);
+
+  useEffect(() => {
+    if (!welcomeSplash) return;
+    const canvas = welcomeCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    let raf = 0;
+    let lastRocketSpawn = 0;
+    let running = true;
+    const GRAVITY = 0.11;
+
+    type Rocket = {
+      x: number;
+      y: number;
+      vx: number;
+      vy: number;
+      prevVy: number;
+      baseHue: number;
+    };
+
+    type BurstParticle = {
+      x: number;
+      y: number;
+      vx: number;
+      vy: number;
+      life: number;
+      maxLife: number;
+      hue: number;
+      size: number;
+    };
+
+    type TrailSpark = {
+      x: number;
+      y: number;
+      vx: number;
+      vy: number;
+      life: number;
+      maxLife: number;
+      hue: number;
+      size: number;
+    };
+
+    const rockets: Rocket[] = [];
+    const bursts: BurstParticle[] = [];
+    const trails: TrailSpark[] = [];
+
+    /** 霓虹色系：高饱和 + 偏亮 */
+    const neonHue = () => {
+      const bands = [165, 185, 200, 280, 305, 330, 115, 52];
+      const b = bands[Math.floor(Math.random() * bands.length)];
+      return b + (Math.random() - 0.5) * 18;
+    };
+
+    const resize = () => {
+      const dpr = window.devicePixelRatio || 1;
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      canvas.width = Math.floor(w * dpr);
+      canvas.height = Math.floor(h * dpr);
+      canvas.style.width = `${w}px`;
+      canvas.style.height = `${h}px`;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    };
+    resize();
+    window.addEventListener("resize", resize);
+
+    const spawnRocket = () => {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const x = w * (0.08 + Math.random() * 0.84);
+      const y = h - 8 - Math.random() * 50;
+      const vx = (Math.random() - 0.5) * 1.4;
+      const vy = -(9.5 + Math.random() * 6);
+      rockets.push({
+        x,
+        y,
+        vx,
+        vy,
+        prevVy: vy,
+        baseHue: neonHue(),
+      });
+    };
+
+    const explode = (cx: number, cy: number, baseHue: number) => {
+      const count = 110 + Math.floor(Math.random() * 70);
+      for (let i = 0; i < count; i += 1) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 4.2 + Math.random() * 7.2;
+        const hue = (baseHue + (Math.random() - 0.5) * 55 + i * 0.35 + 360) % 360;
+        bursts.push({
+          x: cx,
+          y: cy,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          life: 0,
+          maxLife: 52 + Math.random() * 55,
+          hue,
+          size: 1.8 + Math.random() * 4.2,
+        });
+      }
+      /* 内圈更密、稍慢，形成层次 */
+      const inner = Math.floor(count * 0.45);
+      for (let i = 0; i < inner; i += 1) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 2 + Math.random() * 3.8;
+        const hue = (baseHue + (Math.random() - 0.5) * 40 + 360) % 360;
+        bursts.push({
+          x: cx,
+          y: cy,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          life: 0,
+          maxLife: 70 + Math.random() * 45,
+          hue,
+          size: 1.2 + Math.random() * 2.8,
+        });
+      }
+    };
+
+    const frame = (t: number) => {
+      if (!running) return;
+      const W = window.innerWidth;
+      const H = window.innerHeight;
+      ctx.fillStyle = "rgba(255,255,255,0.11)";
+      ctx.fillRect(0, 0, W, H);
+
+      /* 更密：约每 120ms 一发上升弹 */
+      if (t - lastRocketSpawn > 120) {
+        spawnRocket();
+        if (Math.random() > 0.55) spawnRocket();
+        lastRocketSpawn = t;
+      }
+
+      for (let i = rockets.length - 1; i >= 0; i -= 1) {
+        const r = rockets[i];
+        r.prevVy = r.vy;
+        r.x += r.vx;
+        r.y += r.vy;
+        r.vy += GRAVITY;
+        r.vx *= 0.998;
+
+        trails.push({
+          x: r.x + (Math.random() - 0.5) * 3,
+          y: r.y + 6,
+          vx: (Math.random() - 0.5) * 0.35,
+          vy: 0.6 + Math.random() * 0.5,
+          life: 0,
+          maxLife: 10 + Math.random() * 8,
+          hue: (r.baseHue + (Math.random() - 0.5) * 25 + 360) % 360,
+          size: 1.4 + Math.random() * 1.6,
+        });
+
+        const apex = r.prevVy < 0 && r.vy >= 0;
+        if (apex || r.y < H * 0.06) {
+          explode(r.x, r.y, r.baseHue);
+          rockets.splice(i, 1);
+        } else if (r.x < -40 || r.x > W + 40 || r.y > H + 20) {
+          rockets.splice(i, 1);
+        }
+      }
+
+      for (let i = trails.length - 1; i >= 0; i -= 1) {
+        const s = trails[i];
+        s.life += 1;
+        s.x += s.vx;
+        s.y += s.vy;
+        const a = Math.max(0, 1 - s.life / s.maxLife);
+        if (a <= 0.02) {
+          trails.splice(i, 1);
+          continue;
+        }
+        ctx.beginPath();
+        ctx.fillStyle = `hsla(${s.hue}, 100%, 68%, ${a * 0.85})`;
+        ctx.arc(s.x, s.y, s.size * (0.4 + 0.6 * a), 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      for (let i = bursts.length - 1; i >= 0; i -= 1) {
+        const p = bursts[i];
+        p.life += 1;
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.045;
+        p.vx *= 0.985;
+        const alpha = Math.max(0, 1 - p.life / p.maxLife);
+        if (alpha <= 0.015) {
+          bursts.splice(i, 1);
+          continue;
+        }
+        ctx.beginPath();
+        ctx.fillStyle = `hsla(${p.hue}, 100%, 72%, ${alpha})`;
+        ctx.arc(p.x, p.y, p.size * (0.35 + 0.65 * Math.sqrt(alpha)), 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      raf = window.requestAnimationFrame(frame);
+    };
+
+    spawnRocket();
+    spawnRocket();
+    raf = window.requestAnimationFrame(frame);
+    return () => {
+      running = false;
+      window.removeEventListener("resize", resize);
+      window.cancelAnimationFrame(raf);
+    };
+  }, [welcomeSplash]);
 
   useEffect(() => {
     try {
@@ -1003,6 +1319,21 @@ export default function App() {
 
   return (
     <div className="app-shell">
+      {welcomeSplash && (
+        <div
+          className="welcome-splash"
+          role="dialog"
+          aria-modal="true"
+          aria-label="欢迎"
+          style={{
+            backgroundImage: `url(${import.meta.env.BASE_URL}welcome-splash.png)`,
+          }}
+          onClick={dismissWelcomeSplash}
+        >
+          <canvas ref={welcomeCanvasRef} className="welcome-splash-fireworks" aria-hidden="true" />
+          <p className="welcome-splash-hint">（点击菜单可展开功能）</p>
+        </div>
+      )}
       {sidebarOpen && (
         <button
           type="button"
@@ -1138,15 +1469,6 @@ export default function App() {
             {mainView === "feedback" && "反馈箱"}
             {mainView === "admin" && "后台管理"}
           </span>
-          <button
-            type="button"
-            className="theme-toggle-btn mobile-theme-btn"
-            onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))}
-            aria-label={theme === "light" ? "切换到深色夜间版" : "切换到浅色正式版"}
-            title={theme === "light" ? "切换到深色夜间版" : "切换到浅色正式版"}
-          >
-            {theme === "light" ? "🌙 夜间版" : "🌞 正式版"}
-          </button>
         </div>
 
       {mainView === "chat" ? (
@@ -1163,15 +1485,6 @@ export default function App() {
               <AgentAvatar className="logo logo-sm" alt="广东工业大学校徽" />
               <h1 className="chat-slim-title">资助政策咨询</h1>
             </div>
-            <button
-              type="button"
-              className="theme-toggle-btn"
-              onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))}
-              aria-label={theme === "light" ? "切换到深色夜间版" : "切换到浅色正式版"}
-              title={theme === "light" ? "切换到深色夜间版" : "切换到浅色正式版"}
-            >
-              {theme === "light" ? "🌙 夜间版" : "🌞 浅色"}
-            </button>
           </div>
 
           <main className="chat-panel">
@@ -1185,10 +1498,26 @@ export default function App() {
                     <AgentAvatar className="bubble-avatar" alt="助手头像" />
                   )}
                   <div className={`bubble ${msg.role}`}>
-                    <div className="bubble-label">
-                      {msg.role === "user" ? "你" : "助手"}
-                    </div>
                     <div className="bubble-text">{msg.content}</div>
+                    {msg.role === "assistant" && msg.attachments && msg.attachments.length > 0 && (
+                      <div className="chat-attachments" aria-label="相关文件下载">
+                        <div className="chat-attachments-title">相关文件</div>
+                        <div className="chat-attachments-list">
+                          {msg.attachments.map((a) => (
+                            <a
+                              key={a.filename}
+                              className="chat-attachment-link"
+                              href={docHref(a.filename)}
+                              download
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              {a.label}
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -1252,7 +1581,7 @@ export default function App() {
             >
               <textarea
                 rows={2}
-                placeholder="输入你的问题…（Enter 发送，Shift+Enter 换行）"
+                placeholder="输入你的问题…"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -1283,15 +1612,6 @@ export default function App() {
               <AgentAvatar className="logo logo-sm" alt="广东工业大学校徽" />
               <h1 className="chat-slim-title">红帆知海</h1>
             </div>
-            <button
-              type="button"
-              className="theme-toggle-btn"
-              onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))}
-              aria-label={theme === "light" ? "切换到深色夜间版" : "切换到浅色正式版"}
-              title={theme === "light" ? "切换到深色夜间版" : "切换到浅色正式版"}
-            >
-              {theme === "light" ? "🌙 夜间版" : "🌞 浅色"}
-            </button>
           </div>
 
           <p className="hongfan-scope-note">
@@ -1420,9 +1740,6 @@ export default function App() {
                     <AgentAvatar className="bubble-avatar" alt="助手头像" />
                   )}
                   <div className={`bubble ${msg.role}`}>
-                    <div className="bubble-label">
-                      {msg.role === "user" ? "你" : "助手"}
-                    </div>
                     <div className="bubble-text">{msg.content}</div>
                   </div>
                 </div>
@@ -1447,7 +1764,7 @@ export default function App() {
             >
               <textarea
                 rows={2}
-                placeholder="输入你的问题…（Enter 发送，Shift+Enter 换行）"
+                placeholder="输入你的问题…"
                 value={hfInput}
                 onChange={(e) => setHfInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -1485,15 +1802,6 @@ export default function App() {
               <AgentAvatar className="logo logo-sm" alt="广东工业大学校徽" />
               <h1 className="chat-slim-title">心灵之窗</h1>
             </div>
-            <button
-              type="button"
-              className="theme-toggle-btn"
-              onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))}
-              aria-label={theme === "light" ? "切换到深色夜间版" : "切换到浅色正式版"}
-              title={theme === "light" ? "切换到深色夜间版" : "切换到浅色正式版"}
-            >
-              {theme === "light" ? "🌙 夜间版" : "🌞 浅色"}
-            </button>
           </div>
 
           <p className="soul-window-scope-note">
@@ -1512,7 +1820,6 @@ export default function App() {
                     <AgentAvatar className="bubble-avatar" alt="心灵之窗助手" />
                   )}
                   <div className={`bubble ${msg.role}`}>
-                    <div className="bubble-label">{msg.role === "user" ? "你" : "心灵之窗"}</div>
                     <div className="bubble-text">{msg.content}</div>
                   </div>
                 </div>
@@ -1578,11 +1885,7 @@ export default function App() {
           </p>
         </>
       ) : mainView === "hongge" ? (
-        <HonggeLingjingPanel
-          theme={theme}
-          onToggleTheme={() => setTheme((t) => (t === "light" ? "dark" : "light"))}
-          onBack={() => navigateView("chat")}
-        />
+        <HonggeLingjingPanel onBack={() => navigateView("chat")} />
       ) : (
         <>
       <header className="header">
@@ -1601,16 +1904,6 @@ export default function App() {
               资助政策、思政学习、心理陪伴、红色文化与智能工具一体的学工智能服务演示
             </p>
           </div>
-        </div>
-        <div className="header-actions">
-          <button
-            type="button"
-            className="theme-toggle-btn"
-            onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))}
-            aria-label={theme === "light" ? "切换到深色夜间版" : "切换到浅色正式版"}
-          >
-            当前：{theme === "light" ? "🌞 浅色正式版" : "🌙 深色夜间版"}
-          </button>
         </div>
       </header>
 
@@ -2367,7 +2660,7 @@ export default function App() {
         <section className="tool-panel portal-page">
           <h2 className="tool-h2">资助文件与政策链接</h2>
           <p className="tool-intro">
-            以下为广东工业大学及上级部门公开网页归纳，便于一键跳转；具体名额、时间与材料以当年官网最新通知为准。
+            以下为广东工业大学及上级部门公开网页归纳，便于一键跳转；另有「校级办法与表格」「项目说明」等本站备份文档，可直接打开或下载。具体名额、时间与材料以当年官网最新通知为准。
           </p>
           {POLICY_LINK_GROUPS.map((g) => (
             <div key={g.title} className="portal-block">

@@ -3,6 +3,13 @@
 export type PolicyLinkItem = { label: string; href: string; note?: string };
 export type PolicyLinkGroup = { title: string; items: PolicyLinkItem[] };
 
+/** 构建时随 Vite `base` 变化，指向 `frontend/public/docs/` 下静态文件 */
+export function docHref(file: string): string {
+  const base = import.meta.env.BASE_URL || "/";
+  const prefix = base.endsWith("/") ? base : `${base}/`;
+  return `${prefix}docs/${file}`;
+}
+
 export const POLICY_LINK_GROUPS: PolicyLinkGroup[] = [
   {
     title: "总入口与系统",
@@ -29,6 +36,52 @@ export const POLICY_LINK_GROUPS: PolicyLinkGroup[] = [
         href: "https://xsc.gdut.edu.cn/info/1039/5422.htm",
       },
       { label: "勤工助学与三助一辅专栏", href: "https://xsc.gdut.edu.cn/xsgl/qgzxyszyf.htm" },
+    ],
+  },
+  {
+    title: "校级办法与表格（本站备份）",
+    items: [
+      {
+        label: "《学生资助工作实施办法》（本地 .doc）",
+        href: docHref("gdut-student-aid-regulation.doc"),
+      },
+      {
+        label: "《全日制本科学生国家奖助学金实施办法》（本地 .docx）",
+        href: docHref("gdut-national-scholarship-undergrad.docx"),
+      },
+      {
+        label: "《学生临时困难资助管理办法》（本地 .docx）",
+        href: docHref("gdut-temporary-hardship-aid.docx"),
+      },
+      {
+        label: "《全日制本科学生勤工助学管理办法》（本地 .docx）",
+        href: docHref("gdut-work-study-management.docx"),
+      },
+      {
+        label: "附表1：广东省家庭经济困难学生认定申请表（.doc）",
+        href: docHref("appendix1-difficulty-recognition-form.doc"),
+      },
+      {
+        label: "附表2：广东省家庭经济困难学生认定分析表（.xls）",
+        href: docHref("appendix2-difficulty-analysis.xls"),
+      },
+    ],
+  },
+  {
+    title: "项目说明与架构图示（本站）",
+    items: [
+      {
+        label: "《广工学工数智助手》应用说明（PPT 文稿 · Markdown）",
+        href: docHref("aigc-app-ppt.md"),
+      },
+      {
+        label: "前后端与网络层通信（PPT 用图 · Markdown）",
+        href: docHref("network-communication-ppt.md"),
+      },
+      {
+        label: "《广工学工数智助手》应用说明（PPT 文稿 · Word）",
+        href: docHref("aigc-app-ppt.docx"),
+      },
     ],
   },
   {

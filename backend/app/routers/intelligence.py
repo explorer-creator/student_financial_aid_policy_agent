@@ -308,29 +308,3 @@ def precheck_export_xlsx(body: PrecheckBatchBody):
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
-
-
-@router.get("/dashboard/summary")
-def dashboard_summary():
-    """管理看板示例：申请进度、学院完成率、待处理异议。"""
-    return {
-        "apply_progress": [
-            {"category": "国家奖学金", "submitted": 186, "approved": 174, "rejected": 12},
-            {"category": "国家励志奖学金", "submitted": 912, "approved": 865, "rejected": 47},
-            {"category": "国家助学金", "submitted": 3890, "approved": 3621, "rejected": 269},
-            {"category": "社会奖助学金", "submitted": 624, "approved": 512, "rejected": 112},
-        ],
-        "college_completion_rate": [
-            {"college": "机电工程学院", "completion_rate": 0.92},
-            {"college": "自动化学院", "completion_rate": 0.89},
-            {"college": "计算机学院", "completion_rate": 0.94},
-            {"college": "管理学院", "completion_rate": 0.86},
-            {"college": "材料与能源学院", "completion_rate": 0.9},
-        ],
-        "pending_appeals": [
-            {"ticket_id": "APL-2026-0018", "college": "计算机学院", "days_pending": 2, "status": "待辅导员复核"},
-            {"ticket_id": "APL-2026-0021", "college": "管理学院", "days_pending": 4, "status": "待学院评审组意见"},
-            {"ticket_id": "APL-2026-0030", "college": "机电工程学院", "days_pending": 1, "status": "待资助中心确认"},
-        ],
-        "disclaimer": "示例数据。生产环境应来自业务数据库与流程系统。",
-    }

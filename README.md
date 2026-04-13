@@ -55,7 +55,7 @@ scripts/      # 脚本示例（含 Playwright 模板）
 
 | 能力 | 方法 | 路径 | 说明 |
 |---|---|---|---|
-| 大脑状态 | GET | `/api/brain/status` | 是否已接通 LLM（OpenAI 兼容或 Ollama） |
+| 大脑状态 | GET | `/api/brain/status` | 是否已接通 LLM（OpenAI 兼容，如 DeepSeek） |
 | 政策问答 | POST | `/api/chat` | 7×24 自然语言问答 |
 | 资格审查 | POST | `/api/eligibility/screen` | 规则校验并输出异常名单 |
 | 隐形贫困提示 | POST | `/api/insights/poverty-risk` | 启发式风险评分（演示） |
@@ -93,9 +93,9 @@ npm run dev
 
 **接通「大脑」（大模型）**
 
-- **云端**：`OPENAI_API_KEY` + 可选 `OPENAI_BASE_URL`、`MODEL`（任意 OpenAI 兼容网关均可）。**不装 Ollama** 时可用 [DeepSeek 官方 API](https://platform.deepseek.com)：`OPENAI_BASE_URL=https://api.deepseek.com/v1`，`MODEL=deepseek-chat` 或 `deepseek-reasoner`（费用与额度见官网）。
-- **本机 Ollama（免云密钥）**：安装 [Ollama](https://ollama.com) 后执行 `ollama pull deepseek-r1:7b`（默认模型名与 `backend` 配置一致）。在 `backend/.env` 设置 `OLLAMA_BASE_URL=http://127.0.0.1:11434/v1` 与 `OLLAMA_MODEL=deepseek-r1:7b`，**不要**填写 `OPENAI_API_KEY`。重启后端，访问 `GET /api/brain/status` 应返回 `has_brain: true`。
-- **模型放到 D 盘**：设置用户环境变量 `OLLAMA_MODELS` 指向如 `D:\Ollama\models`，退出并重启 Ollama 后再 `ollama pull`。可用仓库脚本：`powershell -ExecutionPolicy Bypass -File scripts/setup-ollama-d-drive.ps1`（默认目录 `D:\Ollama\models`，可改参数 `-ModelDir`）。
+- **推荐（云端 DeepSeek）**：在 `backend/.env` 设置 `OPENAI_API_KEY`、`OPENAI_BASE_URL=https://api.deepseek.com/v1`、`MODEL=deepseek-chat`（或 `deepseek-reasoner`，计费以官网为准）。重启后端，`GET /api/brain/status` 应返回 `has_brain: true`。
+- **其他 OpenAI 兼容网关**：同样填写 `OPENAI_API_KEY` + 对应 `OPENAI_BASE_URL` + `MODEL` 即可。
+- **可选：本机 Ollama（无云密钥时）**：安装 [Ollama](https://ollama.com) 后 `ollama pull deepseek-r1:7b`，在 `backend/.env` 设置 `OLLAMA_BASE_URL=http://127.0.0.1:11434/v1` 与 `OLLAMA_MODEL=deepseek-r1:7b`，**不要**填 `OPENAI_API_KEY`。仅在你需要本地模型时使用；模型放 D 盘等见脚本 `scripts/setup-ollama-d-drive.ps1`。
 
 ### 方式二：Docker 一键运行
 

@@ -10,12 +10,10 @@ function LogoSm() {
 }
 
 type Props = {
-  theme: "light" | "dark";
-  onToggleTheme: () => void;
   onBack: () => void;
 };
 
-export function HonggeLingjingPanel({ theme, onToggleTheme, onBack }: Props) {
+export function HonggeLingjingPanel({ onBack }: Props) {
   const [openId, setOpenId] = useState<string | null>(HONGGE_SONGS[0]?.id ?? null);
 
   const toggle = useCallback((id: string) => {
@@ -29,15 +27,6 @@ export function HonggeLingjingPanel({ theme, onToggleTheme, onBack }: Props) {
           <LogoSm />
           <h1 className="chat-slim-title">红歌灵境</h1>
         </div>
-        <button
-          type="button"
-          className="theme-toggle-btn"
-          onClick={onToggleTheme}
-          aria-label={theme === "light" ? "切换到深色夜间版" : "切换到浅色正式版"}
-          title={theme === "light" ? "切换到深色夜间版" : "切换到浅色正式版"}
-        >
-          {theme === "light" ? "🌙 夜间版" : "🌞 浅色"}
-        </button>
       </div>
 
       <p className="hongge-realm-intro">
