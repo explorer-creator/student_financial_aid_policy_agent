@@ -35,7 +35,7 @@ class UnhandledExceptionMiddleware(BaseHTTPMiddleware):
             )
 
 
-app = FastAPI(title="广工学工数智助手 API", version="0.1.0")
+app = FastAPI(title="砺志励行小助手 API", version="0.1.0")
 app.include_router(intelligence.router, prefix="/api")
 app.include_router(learning_materials.router, prefix="/api")
 

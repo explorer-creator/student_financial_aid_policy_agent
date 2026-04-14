@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 import { suggestPolicyDocAttachments } from "./docAttachmentHints";
+import { HelloGdutPanel } from "./HelloGdutPanel";
+import { IntegrityPanel } from "./IntegrityPanel";
 import {
   CAMPUS_CONTACT_BLOCKS,
   MOCK_EVENT_TICKETS,
@@ -17,6 +19,7 @@ import {
 } from "./hongfanData";
 import { HongfanQuizPanel } from "./HongfanQuizPanel";
 import { HonggeLingjingPanel } from "./HonggeLingjingPanel";
+import { FraudPreventionPanel } from "./FraudPreventionPanel";
 import { LearningMaterialsPanel } from "./LearningMaterialsPanel";
 import { ToolResultVisual } from "./toolResultVisual";
 
@@ -37,20 +40,17 @@ type MainView =
   | "feedback"
   | "admin"
   | "soul_window"
-  | "hongge";
+  | "hongge"
+  | "anti_fraud";
 
 const MAIN_VIEW_ORDER: MainView[] = [
   "chat",
+  "anti_fraud",
   "hongfan",
   "soul_window",
   "hongge",
-  "tools",
   "policy",
-  "contacts",
-  "dashboard",
-  "events",
   "feedback",
-  "admin",
 ];
 
 const AVATAR_SRC = `${import.meta.env.BASE_URL}gdut-avatar.png`;
@@ -263,16 +263,16 @@ async function postChat(
 }
 
 const ASSISTANT_INTRO =
-  "你好，我是「广工学工数智助手」里的资助政策咨询入口。\n\n" +
+  "你好，我是「砺志励行小助手」里的资助政策咨询入口。\n\n" +
   "我可以协助你了解国家与学校层面的奖助学金、助学贷款、绿色通道、勤工助学、困难认定与申诉渠道等信息。回答基于公开政策归纳，个人能否获评、具体金额与时间，请以学校及学院当年正式通知为准。\n\n" +
   "若在这里无法解决你的问题，请拨打揭阳校区资助工作负责老师（谢老师）电话：0663-6603294，或发邮件至 zhongkyxie@gdut.edu.cn；也可先联系所在年级辅导员。\n\n" +
-  "更多演示能力（资格审查、计算器、政策匹配等）在侧栏「智能工具」；政策原文与校区联系方式见「资助文件」「校区联系方式」。";
+  "更多演示功能（问策解惑、砺心立志等）在侧栏「智能菜单」；";
 
 const ASSISTANT_SECOND =
   "你可以点击下方快捷主题，或在输入框自由提问。";
 
 const SOUL_WINDOW_INTRO =
-  "你好，欢迎来到「心灵之窗」。\n\n" +
+  "你好，欢迎来到「暖心润情」。\n\n" +
   "你可以在这里聊聊情绪、压力、人际或自我认同等话题。我会尽量温暖、耐心地回应，并陪你一起梳理感受。\n\n" +
   "重要说明：对话由人工智能生成，不能替代心理咨询、精神科诊疗或危机干预；不用于诊断或开药。";
 
@@ -291,33 +291,51 @@ type QuickOption = { id: string; label: string; reply: string };
 const QUICK_OPTIONS: QuickOption[] = [
   {
     id: "loan",
-    label: "助学贷款怎么申请？",
+    label: "国家助学贷款如何申请？",
     reply:
-      "【助学贷款（简要）】\n\n" +
-      "1. 生源地信用助学贷款：一般在入学前到户籍所在县（区）教育局或资助中心办理，领取《受理证明》，开学后按学校通知提交。\n" +
-      "2. 额度：全日制普通本专科生每年申请额度不超过国家规定上限（近年常见为 20000 元/年，以财教〔2024〕188 号及学校执行为准）。\n" +
-      "3. 还款与利率：按国家助学贷款政策执行（利率与 LPR 挂钩等），具体以经办银行及合同为准。\n\n" +
-      "如需广工返校提交节点、抵扣学费流程，请关注学生工作处/资助中心当年通知。",
+      "【国家助学贷款如何申请】\n\n" +
+      "一、学生申请\n" +
+      "有贷款需求学生请在入学前到当地区县教育局或资助中心办理国家助学贷款，签订贷款合同，领取《生源地信用助学贷款受理证明》（以下简称《受理证明》）。国家助学贷款额度为本科生最高20000元，研究生最高25000元，可用于缴纳学费、住宿费和弥补生活费等，贷款学生可根据自身经济情况调整申请额度。目前，国家开发银行已开通线上续贷办理功能，续贷学生无需到场办理，办理成功后请打印《受理证明》待入学后提交。\n\n" +
+      "二、信息收集\n" +
+      "国家开发银行助学贷款学生返校后需提交《受理证明》，空白处请注明学院、学号和联系方式。老生可提交至学院辅导员处，学院收齐后统一提交至资助中心；新生可在各校区绿色通道接待点提交给资助中心工作人员。\n\n" +
+      "三、缴费处理\n" +
+      "1）贷款学生原则上只需缴纳超出贷款金额部分的欠费，剩余欠款待贷款到账后由学校统一抵扣，无需提前全额缴纳。超出贷款部分请在“广东工业大学财务处”微信公众号“学生缴费”栏查询后缴纳，以免影响注册。\n" +
+      "2）助学贷款预计在11月由贷款银行拨付到学校对公账号，再由学校财务处抵扣欠费；如有结余，第一学期末退回至学生银行卡。请确保已在学校财务处绑定本人有效银行卡（建议一类卡）。\n\n" +
+      "相关文件：\n" +
+      "• 《生源地助学贷款申请指南》",
   },
   {
     id: "scholarship",
-    label: "奖学金申请条件有哪些？",
+    label: "国家奖助学金有哪些？",
     reply:
-      "【奖学金类型（简要）】\n\n" +
-      "常见包括：国家奖学金、国家励志奖学金、校内各类奖学金、社会捐赠奖助学金等。\n\n" +
-      "• 国家奖学金：奖励特别优秀的学生，一般对年级、学业与综合表现有较高要求（二年级及以上等，以学校办法为准）。\n" +
-      "• 国家励志奖学金：面向品学兼优且家庭经济困难的学生，通常需通过困难认定。\n" +
-      "• 校内奖学金：依据综合测评与学校评定办法分批开展。\n\n" +
-      "同一学年国家奖学金与国家励志奖学金不可兼得；是否可同时获得国家助学金与其中一项，按当年规定执行。",
+      "【国家奖助学金有哪些】\n\n" +
+      "（一）本科生国家奖学金\n" +
+      "奖励对象是普通高校全日制本科二年级及以上优秀在校学生，奖励标准为每生每年10000元。同一学年内，获得国家奖学金的家庭经济困难学生可以同时申请并获得国家助学金，但不能同时获得国家励志奖学金。\n\n" +
+      "（二）本科生国家励志奖学金\n" +
+      "奖励对象是品学兼优、家庭经济困难的二年级及以上普通高校全日制本科在校生，奖励标准为每生每年6000元。同一学年内，获得国家励志奖学金的家庭经济困难学生可以同时申请并获得国家助学金，但不能同时获得国家奖学金。\n\n" +
+      "（三）本科生国家助学金\n" +
+      "资助对象是家庭经济困难的普通高校全日制本科在校学生（含预科生），平均资助标准为每生每年3700元，具体标准由学校在每生每年2500-5000元范围内确定，分为2-3档。全日制在校退役士兵学生原则上都可享受本科生国家助学金，资助标准为每生每年3700元。\n\n" +
+      "相关文件：\n" +
+      "• 《广东工业大学全日制本科学生国家奖助学金实施办法》",
   },
   {
     id: "grant",
-    label: "国家助学金与困难认定",
+    label: "家庭经济困难认定如何申请？",
     reply:
-      "【国家助学金与困难认定（简要）】\n\n" +
-      "国家助学金一般面向家庭经济困难学生，通常需先完成家庭经济困难学生认定，再按学年申请与评审。\n\n" +
-      "资助标准按国家与学校分档执行（平均资助标准、分档区间等以当年文件为准）。退役士兵本科生等国家另有专门规定。\n\n" +
-      "若你尚未在库，可关注每学年开学初的认定与申请通知，并向学院辅导员或资助中心咨询。",
+      "【家庭经济困难认定如何申请】\n\n" +
+      "一、认定对象\n" +
+      "就读我校的全日制本科生、全日制研究生和少数民族预科生。\n\n" +
+      "二、认定程序\n" +
+      "（一）学生申请：登录学生工作信息管理系统（http://xsgl.gdut.edu.cn/），在“事务管理-家庭经济困难认定”提交申请，并向学院提交《广东省家庭经济困难学生认定申请表》、户口本复印件及相关证明材料。\n" +
+      "（二）年级评议小组评议：按指标解释审核材料，年级公示3天无异议后报学院。\n" +
+      "（三）学院审核公示：学院审核后公示3天无异议报学校复核，并按不少于10%比例抽查材料真实性。\n" +
+      "（四）学校评审：学校组织交叉评审，审核不通过需在截止前补齐材料并重新提交。\n" +
+      "（五）名单报送：学校反馈结果后，学院与学校分别按要求公示5个工作日，最终报学校资助工作领导小组批准。\n\n" +
+      "三、工作要求\n" +
+      "1）加大宣传，不漏一人；2）自愿申请，诚实提交；3）加强诚信教育，严禁弄虚作假；4）做好归档留痕，电子档与纸质材料按要求保存至少10年。\n\n" +
+      "相关文件：\n" +
+      "• 《广东省家庭经济困难学生认定申请表》\n" +
+      "• 《广东省家庭经济困难学生认定分析表》",
   },
   {
     id: "workstudy",
@@ -485,10 +503,6 @@ export default function App() {
   const [mainView, setMainView] = useState<MainView>(() => mainViewFromHash());
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const [fbTopic, setFbTopic] = useState("");
-  const [fbContent, setFbContent] = useState("");
-  const [fbContact, setFbContact] = useState("");
-  const [fbDone, setFbDone] = useState(false);
   const [quickTopicsVisible, setQuickTopicsVisible] = useState(readQuickTopicsVisible);
 
   const [welcomeSplash, setWelcomeSplash] = useState(() => {
@@ -502,6 +516,7 @@ export default function App() {
       return true;
     }
   });
+  const [welcomeFireworksReady, setWelcomeFireworksReady] = useState(false);
 
   const dismissWelcomeSplash = useCallback(() => {
     try {
@@ -510,6 +525,7 @@ export default function App() {
       /* ignore */
     }
     setWelcomeSplash(false);
+    setWelcomeFireworksReady(false);
   }, []);
   const welcomeCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -551,6 +567,20 @@ export default function App() {
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
+
+  useEffect(() => {
+    // 下线页面兜底：即使手动改 hash，也统一回到政策问答
+    if (
+      mainView === "tools" ||
+      mainView === "contacts" ||
+      mainView === "dashboard" ||
+      mainView === "events" ||
+      mainView === "admin"
+    ) {
+      navigateView("chat");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 仅做受限页面跳转兜底
+  }, [mainView]);
 
   useEffect(() => {
     if (isStaticDemo) {
@@ -679,7 +709,7 @@ export default function App() {
       if (isStaticDemo) {
         setSoulDemoMode(true);
         const demoReply =
-          "【静态演示】当前页面未连接后端 API，心灵之窗无法调用大模型。\n\n" +
+          "【静态演示】当前页面未连接后端 API，暖心润情无法调用大模型。\n\n" +
           "你值得被认真倾听。请在本地运行后端并配置 VITE_API_BASE，或部署带 API 的站点后再试；紧急情况下请直接拨打 110 / 120 或心理援助热线，并联系学校心理中心。";
         setSoulMessages((m) => [...m, { role: "assistant", content: demoReply }]);
       } else {
@@ -1065,12 +1095,18 @@ export default function App() {
 
   useEffect(() => {
     if (!welcomeSplash) return;
-    const id = window.setTimeout(dismissWelcomeSplash, 4000);
-    return () => clearTimeout(id);
+    // 先展示封面 Logo（3s），再播放烟花（2s），最后自动进入主页面
+    setWelcomeFireworksReady(false);
+    const fireworksId = window.setTimeout(() => setWelcomeFireworksReady(true), 3000);
+    const dismissId = window.setTimeout(dismissWelcomeSplash, 5000);
+    return () => {
+      clearTimeout(fireworksId);
+      clearTimeout(dismissId);
+    };
   }, [welcomeSplash, dismissWelcomeSplash]);
 
   useEffect(() => {
-    if (!welcomeSplash) return;
+    if (!welcomeSplash || !welcomeFireworksReady) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") dismissWelcomeSplash();
     };
@@ -1285,7 +1321,7 @@ export default function App() {
       window.removeEventListener("resize", resize);
       window.cancelAnimationFrame(raf);
     };
-  }, [welcomeSplash]);
+  }, [welcomeSplash, welcomeFireworksReady]);
 
   useEffect(() => {
     try {
@@ -1294,28 +1330,6 @@ export default function App() {
       /* ignore */
     }
   }, [quickTopicsVisible]);
-
-  const submitFeedback = () => {
-    if (!fbTopic.trim() || !fbContent.trim()) return;
-    const key = "gdut_aid_feedback_entries";
-    const entry = {
-      ts: Date.now(),
-      topic: fbTopic.trim(),
-      content: fbContent.trim(),
-      contact: fbContact.trim(),
-    };
-    try {
-      const prev = JSON.parse(localStorage.getItem(key) || "[]") as unknown[];
-      const arr = Array.isArray(prev) ? prev : [];
-      localStorage.setItem(key, JSON.stringify([entry, ...arr].slice(0, 100)));
-    } catch {
-      localStorage.setItem(key, JSON.stringify([entry]));
-    }
-    setFbDone(true);
-    setFbTopic("");
-    setFbContent("");
-    setFbContact("");
-  };
 
   return (
     <div className="app-shell">
@@ -1330,7 +1344,9 @@ export default function App() {
           }}
           onClick={dismissWelcomeSplash}
         >
-          <canvas ref={welcomeCanvasRef} className="welcome-splash-fireworks" aria-hidden="true" />
+          {welcomeFireworksReady && (
+            <canvas ref={welcomeCanvasRef} className="welcome-splash-fireworks" aria-hidden="true" />
+          )}
           <p className="welcome-splash-hint">（点击菜单可展开功能）</p>
         </div>
       )}
@@ -1348,7 +1364,7 @@ export default function App() {
         aria-label="站点导航"
       >
         <div className="sidebar-brand">
-          <span className="sidebar-brand-title">广工学工数智助手</span>
+          <span className="sidebar-brand-title">砺志励行小助手</span>
           <span className="sidebar-brand-sub">广东工业大学 · 学工场景一站式</span>
         </div>
         <nav className="sidebar-nav">
@@ -1357,94 +1373,62 @@ export default function App() {
             className={`sidebar-link ${mainView === "chat" ? "active" : ""}`}
             onClick={() => navigateView("chat")}
           >
-            <span className="sidebar-link-main">政策问答</span>
-            <span className="sidebar-link-sub">7×24 资助政策咨询</span>
+            <span className="sidebar-link-main">问策解惑</span>
+            <span className="sidebar-link-sub">获得国家支持的安全感</span>
+          </button>
+          <button
+            type="button"
+            className={`sidebar-link ${mainView === "anti_fraud" ? "active" : ""}`}
+            onClick={() => navigateView("anti_fraud")}
+          >
+            <span className="sidebar-link-main">辨诈防骗</span>
+            <span className="sidebar-link-sub">获得守护财产的警觉感</span>
           </button>
           <button
             type="button"
             className={`sidebar-link ${mainView === "hongfan" ? "active" : ""}`}
             onClick={() => navigateView("hongfan")}
           >
-            <span className="sidebar-link-main">红帆知海</span>
-            <span className="sidebar-link-sub">思政课本侧重 · 示例题库</span>
-          </button>
-          <button
-            type="button"
-            className={`sidebar-link ${mainView === "soul_window" ? "active" : ""}`}
-            onClick={() => navigateView("soul_window")}
-          >
-            <span className="sidebar-link-main">心灵之窗</span>
-            <span className="sidebar-link-sub">情感与心理陪伴（大模型）</span>
+            <span className="sidebar-link-main">你好，广工</span>
+            <span className="sidebar-link-sub">校园与反诈视频</span>
           </button>
           <button
             type="button"
             className={`sidebar-link ${mainView === "hongge" ? "active" : ""}`}
             onClick={() => navigateView("hongge")}
           >
-            <span className="sidebar-link-main">红歌灵境</span>
-            <span className="sidebar-link-sub">外链听学唱 · 五首经典</span>
-          </button>
-          <button
-            type="button"
-            className={`sidebar-link ${mainView === "tools" ? "active" : ""}`}
-            onClick={() => navigateView("tools")}
-          >
-            <span className="sidebar-link-main">智能工具</span>
-            <span className="sidebar-link-sub">审查、测算、匹配、预审等</span>
-          </button>
-          <button
-            type="button"
-            className={`sidebar-link ${mainView === "policy" ? "active" : ""}`}
-            onClick={() => navigateView("policy")}
-          >
-            <span className="sidebar-link-main">资助文件与政策</span>
-            <span className="sidebar-link-sub">一键跳转官方原文</span>
-          </button>
-          <button
-            type="button"
-            className={`sidebar-link ${mainView === "contacts" ? "active" : ""}`}
-            onClick={() => navigateView("contacts")}
-          >
-            <span className="sidebar-link-main">校区联系方式</span>
-            <span className="sidebar-link-sub">校区电话、邮箱与地址</span>
-          </button>
-          <button
-            type="button"
-            className={`sidebar-link ${mainView === "dashboard" ? "active" : ""}`}
-            onClick={() => navigateView("dashboard")}
-          >
-            <span className="sidebar-link-main">数据看板</span>
-            <span className="sidebar-link-sub">进度、完成率、风险概览</span>
-          </button>
-          <button
-            type="button"
-            className={`sidebar-link ${mainView === "events" ? "active" : ""}`}
-            onClick={() => navigateView("events")}
-          >
-            <span className="sidebar-link-main">事件处理进度</span>
-            <span className="sidebar-link-sub">工单状态与节点追踪</span>
+            <span className="sidebar-link-main">砺心立志（故事）</span>
+            <span className="sidebar-link-sub">人物故事与成长启发</span>
           </button>
           <button
             type="button"
             className={`sidebar-link ${mainView === "feedback" ? "active" : ""}`}
             onClick={() => navigateView("feedback")}
           >
-            <span className="sidebar-link-main">反馈箱</span>
-            <span className="sidebar-link-sub">问题上报与改进建议</span>
+            <span className="sidebar-link-main">守信立德</span>
+            <span className="sidebar-link-sub">获得立身之本的原则感</span>
           </button>
           <button
             type="button"
-            className={`sidebar-link ${mainView === "admin" ? "active" : ""}`}
-            onClick={() => navigateView("admin")}
+            className={`sidebar-link ${mainView === "soul_window" ? "active" : ""}`}
+            onClick={() => navigateView("soul_window")}
           >
-            <span className="sidebar-link-main">后台管理平台</span>
-            <span className="sidebar-link-sub">权限、审计与运行管理</span>
+            <span className="sidebar-link-main">暖心润情</span>
+            <span className="sidebar-link-sub">获得情感归属的治愈感</span>
+          </button>
+          <button
+            type="button"
+            className={`sidebar-link ${mainView === "policy" ? "active" : ""}`}
+            onClick={() => navigateView("policy")}
+          >
+            <span className="sidebar-link-main">政策文件</span>
+            <span className="sidebar-link-sub">源于学校相关实施细则</span>
           </button>
         </nav>
       </aside>
 
       <div
-        className={`main-column layout layout-wide${mainView === "chat" || mainView === "hongfan" || mainView === "soul_window" || mainView === "hongge" ? " chat-pure" : ""}`}
+        className={`main-column layout layout-wide${mainView === "chat" || mainView === "soul_window" || mainView === "hongge" ? " chat-pure" : ""}`}
       >
         <div className="mobile-topbar">
           <button
@@ -1457,17 +1441,13 @@ export default function App() {
             菜单
           </button>
           <span className="mobile-topbar-title">
-            {mainView === "chat" && "政策问答"}
-            {mainView === "hongfan" && "红帆知海"}
-            {mainView === "soul_window" && "心灵之窗"}
-            {mainView === "hongge" && "红歌灵境"}
-            {mainView === "tools" && "智能工具"}
-            {mainView === "policy" && "资助文件与政策"}
-            {mainView === "contacts" && "校区联系方式"}
-            {mainView === "dashboard" && "数据看板"}
-            {mainView === "events" && "事件处理进度"}
-            {mainView === "feedback" && "反馈箱"}
-            {mainView === "admin" && "后台管理"}
+            {mainView === "chat" && "问策解惑"}
+            {mainView === "anti_fraud" && "辨诈防骗"}
+            {mainView === "hongfan" && "你好，广工"}
+            {mainView === "soul_window" && "暖心润情"}
+            {mainView === "hongge" && "砺心立志（故事）"}
+            {mainView === "policy" && "政策文件"}
+            {mainView === "feedback" && "守信立德"}
           </span>
         </div>
 
@@ -1599,208 +1579,20 @@ export default function App() {
           </main>
         </>
       ) : mainView === "hongfan" ? (
-        <>
-          {(hfDemoMode || isStaticDemo) && (
-            <div className="demo-banner" role="status">
-              {isStaticDemo
-                ? "静态演示站：红帆知海不会请求后端 API。"
-                : "演示模式：未接通大模型或上游限制时，为固定说明文案。"}
-            </div>
-          )}
-          <div className="chat-slim-header">
-            <div className="chat-slim-brand">
-              <AgentAvatar className="logo logo-sm" alt="广东工业大学校徽" />
-              <h1 className="chat-slim-title">红帆知海</h1>
-            </div>
-          </div>
-
-          <p className="hongfan-scope-note">
-            先选读本侧重（可选「不限」）可筛选下方题目；题库由{" "}
-            <code className="inline-code">01历年真题及解析/hongfan-bank.json</code>{" "}
-            同步到前端（见仓库内同步脚本）。
-          </p>
-
-          <div className="course-chip-row" role="group" aria-label="可选课本侧重">
-            <span className="course-chip-row-label">读本侧重</span>
-            <button
-              type="button"
-              className={`course-chip ${hfCourseTag === null ? "active" : ""}`}
-              onClick={() => setHfCourseTag(null)}
-            >
-              不限
-            </button>
-            {HONGFAN_COURSES.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                className={`course-chip ${hfCourseTag === c.id ? "active" : ""}`}
-                onClick={() => setHfCourseTag(c.id)}
-                title={c.full}
-              >
-                {c.short}
-              </button>
-            ))}
-          </div>
-
-          <div className="hongfan-tab-row" role="tablist" aria-label="红帆知海子页面">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={hfTab === "chat"}
-              className={`hongfan-tab ${hfTab === "chat" ? "active" : ""}`}
-              onClick={() => setHfTab("chat")}
-            >
-              对话
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={hfTab === "quiz"}
-              className={`hongfan-tab ${hfTab === "quiz" ? "active" : ""}`}
-              onClick={() => setHfTab("quiz")}
-            >
-              题库练习
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={hfTab === "materials"}
-              className={`hongfan-tab ${hfTab === "materials" ? "active" : ""}`}
-              onClick={() => setHfTab("materials")}
-            >
-              学习材料
-            </button>
-          </div>
-
-          {hfTab === "quiz" && <HongfanQuizPanel pool={hongfanBankFiltered} />}
-
-          {hfTab === "materials" && (
-            <LearningMaterialsPanel apiBase={apiBase} staticSite={learningMaterialsStatic} />
-          )}
-
-          {hfTab === "chat" && (
-          <details className="hongfan-sample-details">
-            <summary>
-              题库（共 {HONGFAN_BANK_ITEMS.length} 题
-              {hfCourseTag ? ` · 当前筛选 ${hongfanBankFiltered.length} 题` : ""}）
-            </summary>
-            <p className="hongfan-sample-hint">
-              在本机「01历年真题及解析」目录放置 <code className="inline-code">hongfan-bank.json</code>
-              后运行 <code className="inline-code">python scripts/sync_hongfan_bank.py</code>{" "}
-              再执行 <code className="inline-code">npm run dev</code>。仅使用有权使用的材料。
-            </p>
-            {hongfanBankFiltered.length === 0 ? (
-              <p className="hongfan-sample-hint">
-                当前筛选无题目。请同步题库 JSON，或切换「不限」读本侧重。
-              </p>
-            ) : (
-              <div className="hongfan-bank-root">
-                {HONGFAN_COURSES.map((c) => {
-                  const rows = hongfanBankFiltered.filter((it) => it.courseId === c.id);
-                  if (!rows.length) return null;
-                  return (
-                    <section key={c.id} className="hongfan-bank-block">
-                      <h3 className="hongfan-bank-block-title">
-                        {c.short} · {c.full}
-                      </h3>
-                      <ul className="hongfan-bank-list">
-                        {rows.map((item) => (
-                          <li key={item.id} className="hongfan-bank-row">
-                            <button
-                              type="button"
-                              className="hongfan-bank-insert"
-                              onClick={() => pickHongfanBankItem(item)}
-                              disabled={hfLoading}
-                            >
-                              插入
-                            </button>
-                            <span className="hongfan-bank-q" title={item.question}>
-                              {item.question.length > 96 ? `${item.question.slice(0, 96)}…` : item.question}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    </section>
-                  );
-                })}
-              </div>
-            )}
-          </details>
-          )}
-
-          {hfTab === "chat" && (
-          <main className="chat-panel">
-            <div className="messages">
-              {hfMessages.map((msg, i) => (
-                <div
-                  key={i}
-                  className={`bubble-row ${msg.role === "user" ? "user" : "assistant"}`}
-                >
-                  {msg.role === "assistant" && (
-                    <AgentAvatar className="bubble-avatar" alt="助手头像" />
-                  )}
-                  <div className={`bubble ${msg.role}`}>
-                    <div className="bubble-text">{msg.content}</div>
-                  </div>
-                </div>
-              ))}
-              {hfLoading && (
-                <div className="bubble-row assistant">
-                  <AgentAvatar className="bubble-avatar" alt="助手头像" />
-                  <div className="bubble assistant thinking">正在思考…</div>
-                </div>
-              )}
-              <div ref={hfBottomRef} />
-            </div>
-
-            {hfError && <div className="error-banner">{hfError}</div>}
-
-            <form
-              className="composer"
-              onSubmit={(e) => {
-                e.preventDefault();
-                void sendHongfan(hfInput);
-              }}
-            >
-              <textarea
-                rows={2}
-                placeholder="输入你的问题…"
-                value={hfInput}
-                onChange={(e) => setHfInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    void sendHongfan(hfInput);
-                  }
-                }}
-                disabled={hfLoading}
-              />
-              <button type="submit" className="send-btn" disabled={hfLoading}>
-                发送
-              </button>
-            </form>
-          </main>
-          )}
-
-          <p className="tools-back-hint">
-            <button type="button" className="text-link" onClick={() => navigateView("chat")}>
-              ← 返回政策问答
-            </button>
-          </p>
-        </>
+        <HelloGdutPanel onBack={() => navigateView("chat")} />
       ) : mainView === "soul_window" ? (
         <>
           {(soulDemoMode || isStaticDemo) && (
             <div className="demo-banner" role="status">
               {isStaticDemo
-                ? "静态演示站：心灵之窗不会请求后端 API。"
+                ? "静态演示站：暖心润情不会请求后端 API。"
                 : "演示模式：未接通大模型时，为固定说明文案。配置 OPENAI_API_KEY 并对接 DeepSeek 等兼容接口后可使用智能回复。"}
             </div>
           )}
           <div className="chat-slim-header">
             <div className="chat-slim-brand">
               <AgentAvatar className="logo logo-sm" alt="广东工业大学校徽" />
-              <h1 className="chat-slim-title">心灵之窗</h1>
+              <h1 className="chat-slim-title">暖心润情</h1>
             </div>
           </div>
 
@@ -1817,7 +1609,7 @@ export default function App() {
                   className={`bubble-row ${msg.role === "user" ? "user" : "assistant"}`}
                 >
                   {msg.role === "assistant" && (
-                    <AgentAvatar className="bubble-avatar" alt="心灵之窗助手" />
+                    <AgentAvatar className="bubble-avatar" alt="暖心润情助手" />
                   )}
                   <div className={`bubble ${msg.role}`}>
                     <div className="bubble-text">{msg.content}</div>
@@ -1826,7 +1618,7 @@ export default function App() {
               ))}
               {soulLoading && (
                 <div className="bubble-row assistant">
-                  <AgentAvatar className="bubble-avatar" alt="心灵之窗助手" />
+                  <AgentAvatar className="bubble-avatar" alt="暖心润情助手" />
                   <div className="bubble assistant thinking">正在倾听与思考…</div>
                 </div>
               )}
@@ -1886,6 +1678,8 @@ export default function App() {
         </>
       ) : mainView === "hongge" ? (
         <HonggeLingjingPanel onBack={() => navigateView("chat")} />
+      ) : mainView === "anti_fraud" ? (
+        <FraudPreventionPanel onBack={() => navigateView("chat")} />
       ) : (
         <>
       <header className="header">
@@ -1899,7 +1693,7 @@ export default function App() {
         <div className="brand">
           <AgentAvatar className="logo" alt="广东工业大学校徽" />
           <div>
-            <h1>广工学工数智助手</h1>
+            <h1>砺志励行小助手</h1>
             <p className="subtitle">
               资助政策、思政学习、心理陪伴、红色文化与智能工具一体的学工智能服务演示
             </p>
@@ -2773,62 +2567,14 @@ export default function App() {
       )}
 
       {mainView === "feedback" && (
-        <section className="tool-panel portal-page">
-          <h2 className="tool-h2">反馈箱</h2>
-          <p className="tool-intro">
-            将意见暂存在本机浏览器（localStorage），便于演示；生产环境应接入工单或邮件服务，并遵守隐私与审计要求。
-          </p>
-          {fbDone && (
-            <div className="feedback-toast" role="status">
-              已记录，感谢你的反馈。（演示：数据仅存于本机）
-            </div>
-          )}
-          <label className="field-label">主题</label>
-          <input
-            className="portal-input"
-            type="text"
-            value={fbTopic}
-            onChange={(e) => {
-              setFbDone(false);
-              setFbTopic(e.target.value);
-            }}
-            placeholder="例如：希望增加某类政策说明"
-          />
-          <label className="field-label">内容</label>
-          <textarea
-            className="json-editor"
-            rows={6}
-            value={fbContent}
-            onChange={(e) => {
-              setFbDone(false);
-              setFbContent(e.target.value);
-            }}
-            placeholder="请简要描述问题或建议…"
-          />
-          <label className="field-label">联系方式（选填）</label>
-          <input
-            className="portal-input"
-            type="text"
-            value={fbContact}
-            onChange={(e) => {
-              setFbDone(false);
-              setFbContact(e.target.value);
-            }}
-            placeholder="学号 / 邮箱 / 手机"
-          />
-          <div className="tool-actions">
-            <button type="button" className="send-btn" onClick={() => submitFeedback()}>
-              提交反馈
-            </button>
-          </div>
-        </section>
+        <IntegrityPanel onBack={() => navigateView("chat")} />
       )}
 
       {mainView === "admin" && (
         <section className="tool-panel portal-page">
           <h2 className="tool-h2">后台管理平台</h2>
           <p className="tool-intro">
-            本应用为<strong>广工学工数智助手演示前端</strong>，不包含独立的管理员后台。若需正式「后台管理平台」，请在服务端单独部署管理端（身份认证、角色权限、审计日志、与学工数据对接），并通过环境变量配置仅内网或 VPN
+            本应用为<strong>砺志励行小助手演示前端</strong>，不包含独立的管理员后台。若需正式「后台管理平台」，请在服务端单独部署管理端（身份认证、角色权限、审计日志、与学工数据对接），并通过环境变量配置仅内网或 VPN
             可访问。
           </p>
           <ul className="portal-bullet-list">

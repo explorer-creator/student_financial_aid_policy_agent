@@ -12,35 +12,12 @@ export function docHref(file: string): string {
 
 export const POLICY_LINK_GROUPS: PolicyLinkGroup[] = [
   {
-    title: "总入口与系统",
-    items: [
-      { label: "学生资助管理中心", href: "https://zxdk.gdut.edu.cn/index.htm" },
-      { label: "学工处（学生工作处）", href: "https://xsc.gdut.edu.cn/" },
-      { label: "学生工作信息管理系统", href: "http://xsgl.gdut.edu.cn/" },
-      { label: "迎新网 · 教学资讯（绿色通道等以当年栏目为准）", href: "https://yx.gdut.edu.cn/jxzx.htm" },
-    ],
-  },
-  {
-    title: "校级办法（学工处）",
+    title: "快捷主题对应文件下载区",
     items: [
       {
-        label: "《学生资助工作实施办法》（2025年9月修订）",
-        href: "https://xsc.gdut.edu.cn/info/1039/5358.htm",
+        label: "《生源地助学贷款申请指南》（本地 .pdf）",
+        href: docHref("student-origin-loan-guide.pdf"),
       },
-      {
-        label: "《全日制本科学生国家奖助学金实施办法》（2025年9月修订）",
-        href: "https://xsc.gdut.edu.cn/info/1039/5367.htm",
-      },
-      {
-        label: "《学生临时困难资助管理办法》",
-        href: "https://xsc.gdut.edu.cn/info/1039/5422.htm",
-      },
-      { label: "勤工助学与三助一辅专栏", href: "https://xsc.gdut.edu.cn/xsgl/qgzxyszyf.htm" },
-    ],
-  },
-  {
-    title: "校级办法与表格（本站备份）",
-    items: [
       {
         label: "《学生资助工作实施办法》（本地 .doc）",
         href: docHref("gdut-student-aid-regulation.doc"),
@@ -65,46 +42,6 @@ export const POLICY_LINK_GROUPS: PolicyLinkGroup[] = [
         label: "附表2：广东省家庭经济困难学生认定分析表（.xls）",
         href: docHref("appendix2-difficulty-analysis.xls"),
       },
-    ],
-  },
-  {
-    title: "项目说明与架构图示（本站）",
-    items: [
-      {
-        label: "《广工学工数智助手》应用说明（PPT 文稿 · Markdown）",
-        href: docHref("aigc-app-ppt.md"),
-      },
-      {
-        label: "前后端与网络层通信（PPT 用图 · Markdown）",
-        href: docHref("network-communication-ppt.md"),
-      },
-      {
-        label: "《广工学工数智助手》应用说明（PPT 文稿 · Word）",
-        href: docHref("aigc-app-ppt.docx"),
-      },
-    ],
-  },
-  {
-    title: "通知、下载与贷款",
-    items: [
-      { label: "资助中心 · 通知公告", href: "https://zxdk.gdut.edu.cn/index/tzgg/11.htm" },
-      { label: "资助中心 · 下载中心", href: "https://zxdk.gdut.edu.cn/xzzx.htm" },
-      { label: "资助中心 · 规章制度", href: "https://zxdk.gdut.edu.cn/index/gzzd.htm" },
-      {
-        label: "生源地助学贷款工作通知（示例，新学年以最新一篇为准）",
-        href: "https://zxdk.gdut.edu.cn/info/1129/3051.htm",
-      },
-      {
-        label: "贷款毕业生还款指南（生源地，示例）",
-        href: "https://zxdk.gdut.edu.cn/info/1139/3008.htm",
-      },
-    ],
-  },
-  {
-    title: "国家与省级（参考）",
-    items: [
-      { label: "全国学生资助管理中心", href: "https://www.xszz.edu.cn/" },
-      { label: "教育部政府信息公开", href: "http://www.moe.gov.cn/" },
     ],
   },
 ];

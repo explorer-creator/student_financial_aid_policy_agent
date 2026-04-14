@@ -1,64 +1,81 @@
-/** 红歌灵境：外链至哔哩哔哩等公开页面，便于试听与学唱（版权归属原作者与平台）。 */
+/** 砺心立志：人物故事卡片（来源：docs/励志人物故事十则.docx）。 */
 
-export type HonggeSong = {
+export type InspiringStory = {
   id: string;
-  title: string;
-  subtitle: string;
-  /** B 站 BV 号，用于官方播放器嵌入 */
-  bvid: string;
-  /** 在 B 站打开完整页 */
-  watchUrl: string;
-  /** 学唱 / 简谱 / 教唱检索 */
-  learnUrl: string;
+  name: string;
+  tagline: string;
+  summary: string;
 };
 
-export const HONGGE_SONGS: HonggeSong[] = [
+export const INSPIRING_STORIES: InspiringStory[] = [
   {
-    id: "wo-he-zu-guo",
-    title: "1. 我和我的祖国",
-    subtitle: "经典爱国歌曲 · 张藜词 · 秦咏诚曲",
-    bvid: "BV1md4y1q7Bf",
-    watchUrl: "https://www.bilibili.com/video/BV1md4y1q7Bf/",
-    learnUrl:
-      "https://search.bilibili.com/all?keyword=" +
-      encodeURIComponent("我和我的祖国 教唱 简谱"),
+    id: "liu-xiuxiang",
+    name: "刘秀祥",
+    tagline: "背母求学，坚持助学",
+    summary:
+      "幼年家庭遭遇重创后，他很早就承担起照顾患病母亲与维持生计的责任。求学阶段，他在极其艰苦的生活条件下坚持读书，把“先活下去、再走出去”变成了长期行动。大学毕业后，他没有选择轻松路径，而是回到基层教育一线，持续开展劝学与助学，帮助更多孩子把“读书改变命运”从口号变成现实。",
   },
   {
-    id: "zi-jing-hua",
-    title: "2. 紫荆花盛开",
-    subtitle: "李荣浩 / 梁咏琪 · 庆祝香港回归祖国主题作品",
-    bvid: "BV1Jr421n7PM",
-    watchUrl: "https://www.bilibili.com/video/BV1Jr421n7PM/",
-    learnUrl:
-      "https://search.bilibili.com/all?keyword=" + encodeURIComponent("紫荆花盛开 简谱 教唱"),
+    id: "huang-wenxiu",
+    name: "黄文秀",
+    tagline: "扎根扶贫一线，青春无悔",
+    summary:
+      "她出身普通农村家庭，深知贫困给一个家庭带来的长期压力。完成学业后，她主动回到家乡，把最有活力的青春放在最艰苦的基层岗位。驻村期间，她不是“做样子式走访”，而是围绕产业、交通、民生一件件推进，真正把群众关切落到行动上。她留下的，不只是感动，更是可复制的担当与方法。",
   },
   {
-    id: "ru-yuan",
-    title: "3. 如愿",
-    subtitle: "电影《我和我的父辈》主题推广曲 · 周深现场版（示例）",
-    bvid: "BV1i34y157Le",
-    watchUrl: "https://www.bilibili.com/video/BV1i34y157Le/",
-    learnUrl: "https://search.bilibili.com/all?keyword=" + encodeURIComponent("如愿 周深 教唱"),
+    id: "zhang-xue",
+    name: "张雪",
+    tagline: "从修车学徒到机车冠军",
+    summary:
+      "少年时期因家庭压力过早进入社会，他从最基础的修车学徒做起，长期在高强度劳动和不稳定收入中磨炼技能。真正让他改变轨迹的，不是一次运气，而是多年“把一件事做深”的坚持。经历伤病、转型与赛场竞争后，他仍然围绕机车领域持续投入，完成了从生存型劳动到专业化发展的跃迁。",
   },
   {
-    id: "yi-lu-sheng-hua",
-    title: "4. 一路生花",
-    subtitle: "温奕心 · 励志传唱",
-    bvid: "BV1i341187kL",
-    watchUrl: "https://www.bilibili.com/video/BV1i341187kL/",
-    learnUrl: "https://search.bilibili.com/all?keyword=" + encodeURIComponent("一路生花 温奕心 教唱"),
+    id: "mo-yan",
+    name: "莫言",
+    tagline: "苦难中自学，终成文学大家",
+    summary:
+      "贫困与辍学并没有终结他的学习能力，反而迫使他把“自学”变成长期习惯。缺资源时借书、缺时间时挤时间，他在琐碎生活中持续积累表达与观察。后来走上创作道路，他始终把目光放在真实的土地与人群上，用长期写作回应早年的困顿经历。这个过程说明，知识路径不一定线性，但坚持可以让能力持续增长。",
   },
   {
-    id: "bao-wei-huang-he",
-    title: "5. 保卫黄河",
-    subtitle: "《黄河大合唱》第七乐章 · 冼星海曲 · 中央乐团合唱（示例）",
-    bvid: "BV1hb411B7Dv",
-    watchUrl: "https://www.bilibili.com/video/BV1hb411B7Dv/",
-    learnUrl: "https://search.bilibili.com/all?keyword=" + encodeURIComponent("保卫黄河 合唱 指挥 教学"),
+    id: "zhu-ting",
+    name: "朱婷",
+    tagline: "寒门出发，拼出世界级主攻",
+    summary:
+      "在训练条件并不优渥的阶段，她靠的是高密度、可重复、可复盘的训练方法，而不是“天赋神话”。从基层赛场到国家队，她经历了技术迭代、伤病管理和大赛压力，仍能不断提升。她的成长轨迹提醒我们：真正的竞争力来自长期自律与团队协作，来自在高压环境下仍保持执行力。",
+  },
+  {
+    id: "liu-qiangdong",
+    name: "刘强东",
+    tagline: "寒门学子，创业逆袭",
+    summary:
+      "求学阶段的勤工俭学让他很早接触到成本、效率与现金流这些现实问题。创业初期，他从小规模经营起步，反复经历试错、调整与重建，逐步形成对供应链和服务体验的重视。外界看到的是后来的体量，真正关键的是前期长期积累的管理能力与抗压韧性，这也是普通人可借鉴的部分。",
+  },
+  {
+    id: "zhang-guimei",
+    name: "张桂梅",
+    tagline: "扎根山区教育，点亮女孩未来",
+    summary:
+      "她把“教育改变命运”从理念变成一所学校、一届又一届学生的具体结果。面对师资、经费和办学条件的现实难题，她靠近乎苛刻的执行标准和长期投入维持教育质量。她最可贵之处不在口号，而在持续十多年重复做难而正确的事，让很多家庭第一次看见了“读书向上”的确定性。",
+  },
+  {
+    id: "pang-zhongwang",
+    name: "庞众望",
+    tagline: "在逆境中自律前行",
+    summary:
+      "在家庭责任远超同龄人的情况下，他依然保持了清晰的学习目标与稳定节奏。困难不是阶段性的“短痛”，而是长期存在的生活背景，但他通过自律把注意力放在可控事项上：时间管理、学习方法、持续复盘。最终结果并非偶然，而是“长期把正确动作做足”的自然回报。",
+  },
+  {
+    id: "tao-huabi",
+    name: "陶华碧",
+    tagline: "从小生意到民族品牌",
+    summary:
+      "在生活重压下，她从最小规模的生意做起，靠稳定品质和口碑积累一步步扩大影响。她没有依赖复杂概念，而是把“把产品做好、把诚信守住”当作经营底线。长期坚持后，原本普通的小生意形成了品牌势能。她的经历说明，创业不只属于资源充足的人，也属于长期把细节做到位的人。",
+  },
+  {
+    id: "zhang-weili",
+    name: "张伟丽",
+    tagline: "从基层打工到世界冠军",
+    summary:
+      "从基层工作到职业赛场，她走的是一条高强度、长周期、反复受挫的成长路线。训练条件有限、竞争环境残酷，但她通过持续复盘与技术升级把每次失败变成下一次进步的素材。真正支撑她走到世界级舞台的，不是单次爆发，而是长期主义、纪律性和“倒下后还能站起来”的心理韧性。",
   },
 ];
-
-export function bilibiliPlayerSrc(bvid: string): string {
-  const id = bvid.startsWith("BV") ? bvid : `BV${bvid}`;
-  return `https://player.bilibili.com/player.html?bvid=${id}&page=1&high_quality=1&danmaku=0`;
-}

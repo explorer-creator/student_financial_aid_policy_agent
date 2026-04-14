@@ -15,34 +15,14 @@ _DOC_RULES: list[tuple[list[str], str, str]] = [
         "附表2：广东省家庭经济困难学生认定分析表（.xls）",
     ),
     (
-        ["资助工作实施办法", "学生资助工作", "资助办法", "5358"],
-        "gdut-student-aid-regulation.doc",
-        "《广东工业大学学生资助工作实施办法》（.doc）",
+        ["助学贷款", "生源地贷款", "受理证明", "续贷", "贷款申请指南"],
+        "student-origin-loan-guide.pdf",
+        "《生源地助学贷款申请指南》（.pdf）",
     ),
     (
         ["国家奖助学金实施办法", "国奖", "励志", "助学金办法", "5367"],
         "gdut-national-scholarship-undergrad.docx",
         "《广东工业大学全日制本科学生国家奖助学金实施办法》（.docx）",
-    ),
-    (
-        ["临时困难", "临时资助", "5422"],
-        "gdut-temporary-hardship-aid.docx",
-        "《广东工业大学学生临时困难资助管理办法》（.docx）",
-    ),
-    (
-        ["勤工助学", "勤工", "三助", "岗位"],
-        "gdut-work-study-management.docx",
-        "《广东工业大学全日制本科学生勤工助学管理办法》（.docx）",
-    ),
-    (
-        ["应用说明", "ppt", "智能体", "aigc"],
-        "aigc-app-ppt.docx",
-        "《广工学工数智助手》应用说明（.docx）",
-    ),
-    (
-        ["网络", "通信", "前后端"],
-        "network-communication-ppt.md",
-        "前后端与网络层通信说明（.md）",
     ),
 ]
 
