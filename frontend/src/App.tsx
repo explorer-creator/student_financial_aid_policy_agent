@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import "./App.css";
 import { suggestPolicyDocAttachments } from "./docAttachmentHints";
 import { HelloGdutPanel } from "./HelloGdutPanel";
@@ -9,18 +9,8 @@ import {
   POLICY_LINK_GROUPS,
   docHref,
 } from "./portalData";
-import {
-  HONGFAN_BANK_ITEMS,
-  HONGFAN_COURSES,
-  HONGFAN_INTRO,
-  hongfanItemsForCourse,
-  type HongfanBankItem,
-  type HongfanCourseId,
-} from "./hongfanData";
-import { HongfanQuizPanel } from "./HongfanQuizPanel";
 import { HonggeLingjingPanel } from "./HonggeLingjingPanel";
 import { FraudPreventionPanel } from "./FraudPreventionPanel";
-import { LearningMaterialsPanel } from "./LearningMaterialsPanel";
 import { ToolResultVisual } from "./toolResultVisual";
 
 type Role = "user" | "assistant";
@@ -158,8 +148,6 @@ const isStaticDemo =
   import.meta.env.DEV ? false : import.meta.env.VITE_DEMO_ONLY === "true";
 
 /** 生产构建若未设置 VITE_API_BASE，fetch 会请求当前站点下的 /api/…，静态服务器无此路由 → 404；学习材料改走说明文案 */
-const learningMaterialsStatic =
-  import.meta.env.DEV ? false : isStaticDemo || !apiBase;
 
 const DEFAULT_SCREEN_JSON = `{
   "students": [
@@ -237,15 +225,12 @@ const DEFAULT_PRECHECK_JSON = `{
 
 async function postChat(
   messages: { role: string; content: string }[],
-  opts?: { appScope?: "policy" | "hongfan" | "soul_window"; courseTag?: HongfanCourseId | null },
+  opts?: { appScope?: "policy" | "soul_window" },
 ) {
   const body: Record<string, unknown> = {
     messages,
     app_scope: opts?.appScope ?? "policy",
   };
-  if (opts?.courseTag) {
-    body.course_tag = opts.courseTag;
-  }
   const res = await fetch(`${apiBase}/api/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -407,15 +392,6 @@ export default function App() {
   const [demoMode, setDemoMode] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  const [hfMessages, setHfMessages] = useState<Msg[]>([{ role: "assistant", content: HONGFAN_INTRO }]);
-  const [hfInput, setHfInput] = useState("");
-  const [hfLoading, setHfLoading] = useState(false);
-  const [hfError, setHfError] = useState<string | null>(null);
-  const [hfDemoMode, setHfDemoMode] = useState(false);
-  const [hfCourseTag, setHfCourseTag] = useState<HongfanCourseId | null>(null);
-  const [hfTab, setHfTab] = useState<"chat" | "quiz" | "materials">("chat");
-  const hfBottomRef = useRef<HTMLDivElement>(null);
-
   const [soulMessages, setSoulMessages] = useState<Msg[]>([
     { role: "assistant", content: SOUL_WINDOW_INTRO },
     { role: "assistant", content: SOUL_WINDOW_SECOND },
@@ -555,10 +531,6 @@ export default function App() {
   }, [messages, scrollDown]);
 
   useEffect(() => {
-    hfBottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [hfMessages]);
-
-  useEffect(() => {
     soulBottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [soulMessages]);
 
@@ -585,7 +557,6 @@ export default function App() {
   useEffect(() => {
     if (isStaticDemo) {
       setDemoMode(true);
-      setHfDemoMode(true);
       setSoulDemoMode(true);
     }
   }, []);
@@ -596,11 +567,6 @@ export default function App() {
     setSidebarOpen(false);
     if (v === "tools") setTab("screen");
   };
-
-  const hongfanBankFiltered = useMemo(
-    () => hongfanItemsForCourse(hfCourseTag),
-    [hfCourseTag],
-  );
 
   const send = async (text: string) => {
     const trimmed = text.trim();
@@ -655,44 +621,6 @@ export default function App() {
     }
   };
 
-  const sendHongfan = async (text: string) => {
-    const trimmed = text.trim();
-    if (!trimmed || hfLoading) return;
-    setHfError(null);
-    const nextUser: Msg = { role: "user", content: trimmed };
-    setHfMessages((m) => [...m, nextUser]);
-    setHfInput("");
-    setHfLoading(true);
-    const history = [...hfMessages, nextUser].map((x) => ({
-      role: x.role,
-      content: x.content,
-    }));
-    try {
-      if (isStaticDemo) {
-        setHfDemoMode(true);
-        const label = hfCourseTag
-          ? HONGFAN_COURSES.find((c) => c.id === hfCourseTag)?.full ?? ""
-          : "";
-        const demoReply =
-          "【静态演示】当前为静态站点，红帆知海未连接后端 API。\n\n" +
-          (label ? `你已选择读本侧重「${label}」。` : "") +
-          "部署后端并配置 VITE_API_BASE 后可使用大模型答疑。";
-        setHfMessages((m) => [...m, { role: "assistant", content: demoReply }]);
-      } else {
-        const data = await postChat(history, {
-          appScope: "hongfan",
-          courseTag: hfCourseTag,
-        });
-        if (data.mode === "demo") setHfDemoMode(true);
-        setHfMessages((m) => [...m, { role: "assistant", content: data.reply }]);
-      }
-    } catch (e) {
-      setHfError(e instanceof Error ? e.message : "发送失败");
-    } finally {
-      setHfLoading(false);
-    }
-  };
-
   const sendSoul = async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || soulLoading) return;
@@ -722,17 +650,6 @@ export default function App() {
     } finally {
       setSoulLoading(false);
     }
-  };
-
-  const pickHongfanBankItem = (item: HongfanBankItem) => {
-    if (hfLoading) return;
-    const label = HONGFAN_COURSES.find((c) => c.id === item.courseId)?.full ?? item.courseId;
-    setHfError(null);
-    setHfMessages((m) => [
-      ...m,
-      { role: "user", content: `【题库 · ${label}】${item.question}` },
-      { role: "assistant", content: item.answer },
-    ]);
   };
 
   const pickQuickOption = (opt: QuickOption) => {
