@@ -15,32 +15,48 @@ export const POLICY_LINK_GROUPS: PolicyLinkGroup[] = [
     title: "快捷主题对应文件下载区",
     items: [
       {
-        label: "《生源地助学贷款申请指南》（本地 .pdf）",
+        label: "《生源地助学贷款申请指南》（.pdf）",
         href: docHref("student-origin-loan-guide.pdf"),
       },
       {
-        label: "《学生资助工作实施办法》（本地 .doc）",
-        href: docHref("gdut-student-aid-regulation.doc"),
-      },
-      {
-        label: "《全日制本科学生国家奖助学金实施办法》（本地 .docx）",
+        label: "《广东工业大学全日制本科学生国家奖助学金实施办法》（.docx）",
         href: docHref("gdut-national-scholarship-undergrad.docx"),
       },
       {
-        label: "《学生临时困难资助管理办法》（本地 .docx）",
+        label: "《广东工业大学家庭经济困难学生认定实施办法》（广工大规字〔2023〕16号）（资助中心规章制度）",
+        href: "https://zxdk.gdut.edu.cn/index/gzzd.htm",
+      },
+      {
+        label: "《广东省家庭经济困难学生认定申请表》（.doc）",
+        href: docHref("appendix1-difficulty-recognition-form.doc"),
+      },
+      {
+        label: "《广东省家庭经济困难学生认定工作指标解释》《放弃说明》模板等（资助中心下载中心）",
+        href: "https://zxdk.gdut.edu.cn/xzzx.htm",
+      },
+      {
+        label: "《广东工业大学学生临时困难资助管理办法》（广工大规字〔2024〕14号）（.docx）",
         href: docHref("gdut-temporary-hardship-aid.docx"),
+      },
+      {
+        label: "广东工业大学学生临时困难资助申请表（资助中心下载页）",
+        href: "https://zxdk.gdut.edu.cn/info/1139/2690.htm",
+      },
+      {
+        label: "学生临时困难资助证明材料清单等（下载中心）",
+        href: "https://zxdk.gdut.edu.cn/xzzx.htm",
+      },
+      {
+        label: "《广东工业大学学生资助工作实施办法》（本地 .doc）",
+        href: docHref("gdut-student-aid-regulation.doc"),
+      },
+      {
+        label: "《广东省家庭经济困难学生认定分析表》（.xls）",
+        href: docHref("appendix2-difficulty-analysis.xls"),
       },
       {
         label: "《全日制本科学生勤工助学管理办法》（本地 .docx）",
         href: docHref("gdut-work-study-management.docx"),
-      },
-      {
-        label: "附表1：广东省家庭经济困难学生认定申请表（.doc）",
-        href: docHref("appendix1-difficulty-recognition-form.doc"),
-      },
-      {
-        label: "附表2：广东省家庭经济困难学生认定分析表（.xls）",
-        href: docHref("appendix2-difficulty-analysis.xls"),
       },
     ],
   },

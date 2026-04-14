@@ -24,6 +24,11 @@ _DOC_RULES: list[tuple[list[str], str, str]] = [
         "gdut-national-scholarship-undergrad.docx",
         "《广东工业大学全日制本科学生国家奖助学金实施办法》（.docx）",
     ),
+    (
+        ["临时困难资助", "临时困难", "证明材料清单"],
+        "gdut-temporary-hardship-aid.docx",
+        "《广东工业大学学生临时困难资助管理办法》（广工大规字〔2024〕14号）（.docx）",
+    ),
 ]
 
 _MAX = 5

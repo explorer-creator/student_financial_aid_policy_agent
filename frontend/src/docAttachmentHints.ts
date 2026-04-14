@@ -23,6 +23,11 @@ const RULES: { keywords: string[]; filename: string; label: string }[] = [
     filename: "gdut-national-scholarship-undergrad.docx",
     label: "《广东工业大学全日制本科学生国家奖助学金实施办法》（.docx）",
   },
+  {
+    keywords: ["临时困难资助", "临时困难", "证明材料清单"],
+    filename: "gdut-temporary-hardship-aid.docx",
+    label: "《广东工业大学学生临时困难资助管理办法》（广工大规字〔2024〕14号）（.docx）",
+  },
 ];
 
 const MAX = 5;

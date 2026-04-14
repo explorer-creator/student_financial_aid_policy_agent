@@ -45,7 +45,10 @@
   height: 2.9rem;
   border-radius: 10px;
   border: 1px solid #f2b7c5;
-  object-fit: cover;
+  object-fit: contain;
+  object-position: center;
+  padding: 0.18rem;
+  box-sizing: border-box;
   flex-shrink: 0;
   background: #fff;
 }
@@ -1601,20 +1604,26 @@ h1 {
   background: var(--surface2);
   min-height: 240px;
   box-shadow: 0 8px 24px rgba(20, 20, 30, 0.16);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 0.4rem;
 }
 
 .flip-slide-media img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  max-width: 100%;
+  max-height: min(52vh, 440px);
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  object-position: center;
   display: block;
-  transform: scale(1.01);
-  transition: transform 0.35s ease, filter 0.35s ease;
+  transition: filter 0.35s ease;
   filter: saturate(1.02) contrast(1.02);
 }
 
 .flip-slide:hover .flip-slide-media img {
-  transform: scale(1.04);
+  filter: saturate(1.06) contrast(1.05);
 }
 
 .hongge-song-list {

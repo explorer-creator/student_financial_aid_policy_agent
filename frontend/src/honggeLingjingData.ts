@@ -1,4 +1,4 @@
-/** 砺心立志：人物故事卡片（来源：docs/励志人物故事十则.docx）。 */
+/** 砺心立志 · 侧栏注释「获得向上生长的力量感」：人物故事卡片（来源：docs/励志人物故事十则.docx）。 */
 
 export type InspiringStory = {
   id: string;
