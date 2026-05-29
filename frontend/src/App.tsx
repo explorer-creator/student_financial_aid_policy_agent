@@ -110,15 +110,6 @@ function AgentAvatar({ className, alt }: { className: string; alt: string }) {
 function mainViewFromHash(): MainView {
   const raw = window.location.hash.replace(/^#\/?/, "");
   if (!raw) return "chat";
-  if (raw === "hongfan") {
-    try {
-      const base = `${window.location.pathname}${window.location.search}`;
-      window.history.replaceState(null, "", `${base}#chat`);
-    } catch {
-      /* ignore */
-    }
-    return "chat";
-  }
   return MAIN_VIEW_ORDER.includes(raw as MainView) ? (raw as MainView) : "chat";
 }
 
@@ -154,7 +145,7 @@ const apiBase = import.meta.env.DEV
 const isStaticDemo =
   import.meta.env.DEV ? false : import.meta.env.VITE_DEMO_ONLY === "true";
 
-/** 生产构建若未设置 VITE_API_BASE，fetch 会请求当前站点下的 /api/…，静态服务器无此路由 → 404；学习材料改走说明文案 */
+/** 生产构建若未设置 VITE_API_BASE，fetch 会请求当前站点下的 /api/…，静态服务器无此路由 → 404 */
 
 const DEFAULT_SCREEN_JSON = `{
   "students": [
@@ -286,9 +277,6 @@ type QuickOption = {
   attachments?: ChatDocAttachment[];
 };
 
-const ZXDK_XZZX = "https://zxdk.gdut.edu.cn/xzzx.htm";
-const ZXDK_TEMP_FORM = "https://zxdk.gdut.edu.cn/info/1139/2690.htm";
-
 const QUICK_OPTIONS: QuickOption[] = [
   {
     id: "loan",
@@ -339,12 +327,11 @@ const QUICK_OPTIONS: QuickOption[] = [
         filename: "appendix1-difficulty-recognition-form.doc",
       },
       {
-        label: "《广东工业大学家庭经济困难学生认定实施办法》（广工大规字〔2023〕16号）等（资助中心规章制度）",
-        href: "https://zxdk.gdut.edu.cn/index/gzzd.htm",
+        label: "《广东工业大学家庭经济困难学生认定实施办法》（广工大规字〔2023〕16号）",
+        filename: "gdut-student-aid-regulation.doc",
       },
       {
-        label: "《广东省家庭经济困难学生认定工作指标解释》《放弃说明》模板等（资助中心下载中心）",
-        href: ZXDK_XZZX,
+        label: "《广东省家庭经济困难学生认定工作指标解释》《放弃说明》模板等（请向学院或资助中心索取最新版）",
       },
     ],
     reply:
@@ -353,7 +340,7 @@ const QUICK_OPTIONS: QuickOption[] = [
       "一、认定对象：就读我校的全日制本科生、全日制研究生和少数民族预科生。\n\n" +
       "二、认定程序\n" +
       "（一）学生申请\n" +
-      "学生登陆“学生工作信息管理系统”（http://xsgl.gdut.edu.cn/）点击“事务管理”——“家庭经济困难认定”——“当前学年家庭经济困难学生认定”，提出家庭经济困难认定申请，对照本人纸质材料内容如实填写相关选项。同时向所在学院提交《广东省家庭经济困难学生认定申请表》、户口本复印件及相关证明材料，证明材料提交要求请参照《广东省家庭经济困难学生认定工作指标解释》（以下简称《指标解释》）。\n\n" +
+      "学生登陆「学生工作信息管理系统」点击「事务管理」——「家庭经济困难认定」——「当前学年家庭经济困难学生认定」，提出家庭经济困难认定申请，对照本人纸质材料内容如实填写相关选项。同时向所在学院提交《广东省家庭经济困难学生认定申请表》、户口本复印件及相关证明材料，证明材料提交要求请参照《广东省家庭经济困难学生认定工作指标解释》（以下简称《指标解释》）。\n\n" +
       "（二）年级评议小组评议\n" +
       "年级评议小组应按照《指标解释》，在学工系统对学生申请材料进行严格审核，审核过程中如发现不符合要求的情况，应退回学生申请，通知其修改并重新提交后再次审核。经年级评议后，初步认定是否为家庭经济困难学生，并在本年级公示3天无异议后，报学院认定工作小组审核。评议小组审核与学生申请同时进行，请小组合理安排时间。\n\n" +
       "（三）学院审核公示\n" +
@@ -374,8 +361,7 @@ const QUICK_OPTIONS: QuickOption[] = [
       "2. 《广东省家庭经济困难学生认定申请表》\n" +
       "3. 《广东省家庭经济困难学生认定工作指标解释》\n" +
       "4. 《放弃说明》模板\n\n" +
-      "校级办法正文、指标解释与放弃说明等可在学工处网站或资助中心「下载中心」获取最新版：" +
-      ZXDK_XZZX,
+      "校级办法正文、指标解释与放弃说明等可向学院或学生资助管理中心索取最新版；本站「资助文件」栏目提供部分制度与表格备份供下载。",
   },
   {
     id: "temp_hardship",
@@ -385,8 +371,8 @@ const QUICK_OPTIONS: QuickOption[] = [
         label: "《广东工业大学学生临时困难资助管理办法》（广工大规字〔2024〕14号）（.docx）",
         filename: "gdut-temporary-hardship-aid.docx",
       },
-      { label: "广东工业大学学生临时困难资助申请表（资助中心下载页）", href: ZXDK_TEMP_FORM },
-      { label: "学生临时困难资助证明材料清单等（下载中心）", href: ZXDK_XZZX },
+      { label: "广东工业大学学生临时困难资助申请表（请向学院或资助中心索取最新版）" },
+      { label: "学生临时困难资助证明材料清单等（请向学院或资助中心索取最新版）" },
     ],
     reply:
       "【临时困难资助如何申请】\n\n" +
@@ -441,10 +427,9 @@ const QUICK_OPTIONS: QuickOption[] = [
       "三、报送材料及相关要求（摘要）\n" +
       "（一）学生申请材料：学生按照不同类型，需准备《入伍通知书》复印件、登录全国征兵网在线填写打印的《应征入伍服兵役高等学校学生国家教育资助申请表Ⅰ》或《申请表Ⅱ》一式两份（个人基本信息手填或复印无效），并按要求到征兵部门或退役军人事务部门盖章后提交学生资助管理中心审核；毕业生另需提供学位证、毕业证复印件等。退役复学/退役入学另需《退役证》复印件、录取通知书或复学通知书等。\n" +
       "（二）相关要求及说明：申请退役士兵学费资助的学生应完成退役军人服务中心（站）建档立卡或信息更正；材料需先到批准入伍地县级征兵办公室及学校财务处等审核后再报送资助中心；省教育厅审批通过后由财务处统一发放（时间以当年通知为准）。\n\n" +
-      "相关文件（表格请按当年通知版本在以下入口获取）：\n" +
-      "1. 广东工业大学退役士兵国家助学金申请表等（资助中心下载中心）\n" +
-      "2. 广东工业大学退役复学（入学）学生国家教育资助续报申请表（非首次申请学生适用）等（资助中心下载中心）\n" +
-      ZXDK_XZZX,
+      "相关文件（表格请按当年通知版本向学院或资助中心索取）：\n" +
+      "1. 广东工业大学退役士兵国家助学金申请表等\n" +
+      "2. 广东工业大学退役复学（入学）学生国家教育资助续报申请表（非首次申请学生适用）等",
   },
   {
     id: "newborn_temp",
@@ -454,8 +439,8 @@ const QUICK_OPTIONS: QuickOption[] = [
         label: "《广东工业大学学生临时困难资助管理办法》（广工大规字〔2024〕14号）（.docx）",
         filename: "gdut-temporary-hardship-aid.docx",
       },
-      { label: "广东工业大学学生临时困难资助申请表（资助中心下载页）", href: ZXDK_TEMP_FORM },
-      { label: "学生临时困难资助证明材料清单等（下载中心）", href: ZXDK_XZZX },
+      { label: "广东工业大学学生临时困难资助申请表（请向学院或资助中心索取最新版）" },
+      { label: "学生临时困难资助证明材料清单等（请向学院或资助中心索取最新版）" },
     ],
     reply:
       "【新生临时困难资助如何申请】\n\n" +
@@ -1483,8 +1468,14 @@ export default function App() {
                         <div className="chat-attachments-title">相关文件</div>
                         <div className="chat-attachments-list">
                           {msg.attachments.map((a, ai) => {
-                            const href =
+                            const rawHref =
                               a.href ?? (a.filename ? docHref(a.filename) : undefined);
+                            const href =
+                              rawHref && !/^https?:\/\//i.test(rawHref)
+                                ? rawHref
+                                : a.filename
+                                  ? docHref(a.filename)
+                                  : undefined;
                             if (!href) {
                               return (
                                 <span key={`${a.label}-${ai}`} className="chat-attachment-link">
@@ -2466,17 +2457,21 @@ export default function App() {
         <section className="tool-panel portal-page">
           <h2 className="tool-h2">资助文件与政策链接</h2>
           <p className="tool-intro">
-            以下为广东工业大学及上级部门公开网页归纳，便于一键跳转；另有「校级办法与表格」「项目说明」等本站备份文档，可直接打开或下载。具体名额、时间与材料以当年官网最新通知为准。
+            以下为资助相关制度与表格的本站备份，可直接打开或下载；具体名额、时间与材料以学校及学院当年正式通知为准。
           </p>
           {POLICY_LINK_GROUPS.map((g) => (
             <div key={g.title} className="portal-block">
               <h3 className="tool-h3">{g.title}</h3>
               <ul className="portal-link-list">
                 {g.items.map((item) => (
-                  <li key={item.label + item.href}>
-                    <a href={item.href} target="_blank" rel="noopener noreferrer">
-                      {item.label}
-                    </a>
+                  <li key={item.label + (item.href ?? "")}>
+                    {item.href ? (
+                      <a href={item.href} target="_blank" rel="noopener noreferrer">
+                        {item.label}
+                      </a>
+                    ) : (
+                      <span>{item.label}</span>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -2489,15 +2484,7 @@ export default function App() {
         <section className="tool-panel portal-page">
           <h2 className="tool-h2">校区与联系方式</h2>
           <p className="tool-intro">
-            信息来自学校公开栏目归纳；若与官网不一致，以{" "}
-            <a href="https://xsc.gdut.edu.cn/" target="_blank" rel="noopener noreferrer">
-              学工处网站
-            </a>{" "}
-            及{" "}
-            <a href="https://zxdk.gdut.edu.cn/index.htm" target="_blank" rel="noopener noreferrer">
-              学生资助管理中心
-            </a>{" "}
-            最新公布为准。
+            信息来自学校公开栏目归纳；若与学院或资助中心最新通知不一致，请以学校及学院正式公布为准。
           </p>
           <div className="portal-cards">
             {CAMPUS_CONTACT_BLOCKS.map((b) => (

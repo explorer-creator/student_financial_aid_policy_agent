@@ -1,6 +1,6 @@
 /** 门户页：资助政策链接、校区联系（与后端 policy_context 公开信息一致，供前端展示） */
 
-export type PolicyLinkItem = { label: string; href: string; note?: string };
+export type PolicyLinkItem = { label: string; href?: string; note?: string };
 export type PolicyLinkGroup = { title: string; items: PolicyLinkItem[] };
 
 /** 构建时随 Vite `base` 变化，指向 `frontend/public/docs/` 下静态文件 */
@@ -23,28 +23,25 @@ export const POLICY_LINK_GROUPS: PolicyLinkGroup[] = [
         href: docHref("gdut-national-scholarship-undergrad.docx"),
       },
       {
-        label: "《广东工业大学家庭经济困难学生认定实施办法》（广工大规字〔2023〕16号）（资助中心规章制度）",
-        href: "https://zxdk.gdut.edu.cn/index/gzzd.htm",
+        label: "《广东工业大学家庭经济困难学生认定实施办法》（广工大规字〔2023〕16号）（本站备份）",
+        href: docHref("gdut-student-aid-regulation.doc"),
       },
       {
         label: "《广东省家庭经济困难学生认定申请表》（.doc）",
         href: docHref("appendix1-difficulty-recognition-form.doc"),
       },
       {
-        label: "《广东省家庭经济困难学生认定工作指标解释》《放弃说明》模板等（资助中心下载中心）",
-        href: "https://zxdk.gdut.edu.cn/xzzx.htm",
+        label: "《广东省家庭经济困难学生认定工作指标解释》《放弃说明》模板等（请向学院或资助中心索取最新版）",
       },
       {
         label: "《广东工业大学学生临时困难资助管理办法》（广工大规字〔2024〕14号）（.docx）",
         href: docHref("gdut-temporary-hardship-aid.docx"),
       },
       {
-        label: "广东工业大学学生临时困难资助申请表（资助中心下载页）",
-        href: "https://zxdk.gdut.edu.cn/info/1139/2690.htm",
+        label: "广东工业大学学生临时困难资助申请表（请向学院或资助中心索取最新版）",
       },
       {
-        label: "学生临时困难资助证明材料清单等（下载中心）",
-        href: "https://zxdk.gdut.edu.cn/xzzx.htm",
+        label: "学生临时困难资助证明材料清单等（请向学院或资助中心索取最新版）",
       },
       {
         label: "《广东工业大学学生资助工作实施办法》（本地 .doc）",

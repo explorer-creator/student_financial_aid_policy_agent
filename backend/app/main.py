@@ -1,4 +1,5 @@
 import logging
+import re
 
 import httpx
 from fastapi import FastAPI, HTTPException
@@ -10,13 +11,23 @@ from starlette.responses import JSONResponse
 
 from app.brain import BRAIN_API_REVISION, brain_status_dict, resolve_brain
 from app.config import ENV_FILE_PATH, settings
-from app.hongfan_context import HONGFAN_COURSE_LABELS, HONGFAN_SYSTEM_PROMPT, hongfan_course_line
 from app.doc_attachments import suggest_doc_attachments
 from app.policy_context import SYSTEM_PROMPT
 from app.rag_loader import get_rag_chunks_and_sources
 from app.rag_selection import select_relevant_chunks
 from app.psyche_context import SOUL_WINDOW_SYSTEM_PROMPT
-from app.routers import intelligence, learning_materials
+from app.routers import intelligence
+
+
+_EXTERNAL_URL_RE = re.compile(r"https?://\S+")
+
+
+def _strip_external_urls(text: str) -> str:
+    """移除回答中的外链，避免平台跳转到站外（投诉整改）。"""
+    cleaned = _EXTERNAL_URL_RE.sub("", text)
+    cleaned = re.sub(r"[ \t]{2,}", " ", cleaned)
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+    return cleaned.strip()
 
 
 class UnhandledExceptionMiddleware(BaseHTTPMiddleware):
@@ -37,7 +48,6 @@ class UnhandledExceptionMiddleware(BaseHTTPMiddleware):
 
 app = FastAPI(title="砺志励行小助手 API", version="0.1.0")
 app.include_router(intelligence.router, prefix="/api")
-app.include_router(learning_materials.router, prefix="/api")
 
 origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
 app.add_middleware(UnhandledExceptionMiddleware)
@@ -60,9 +70,8 @@ class ChatRequest(BaseModel):
     messages: list[ChatMessage]
     app_scope: str = Field(
         default="policy",
-        description="policy=资助政策；hongfan=红帆知海；soul_window=心灵之窗（情感心理陪伴）",
+        description="policy=资助政策；soul_window=暖心润情（情感心理陪伴）",
     )
-    course_tag: str | None = Field(default=None, description="hongfan 时可选读本 id")
 
     @field_validator("app_scope", mode="before")
     @classmethod
@@ -70,15 +79,7 @@ class ChatRequest(BaseModel):
         if v is None or (isinstance(v, str) and not str(v).strip()):
             return "policy"
         s = str(v).strip().lower()
-        return s if s in ("policy", "hongfan", "soul_window") else "policy"
-
-    @field_validator("course_tag", mode="before")
-    @classmethod
-    def normalize_course_tag(cls, v: object) -> str | None:
-        if v is None or (isinstance(v, str) and not str(v).strip()):
-            return None
-        s = str(v).strip()
-        return s if s in HONGFAN_COURSE_LABELS else None
+        return s if s in ("policy", "soul_window") else "policy"
 
 
 class ChatAttachment(BaseModel):
@@ -148,8 +149,8 @@ def _demo_reply(user_text: str) -> str:
         "【演示模式】未配置大模型 API 密钥，以下为固定示例回复（广东工业大学资助政策）。",
         "",
         "国家层面：本专科国奖10000元/年、励志6000元/年、助学金平均3700元/年（高校在2500—5000元分档）等为近年常见标准，以财教〔2024〕181号等国家文件及学校执行为准。",
-        "本校：申请与审核多通过学生工作信息管理系统 http://xsgl.gdut.edu.cn/ ，资助咨询 xsczdb@gdut.edu.cn。",
-        "常用官网（可直接复制到浏览器）：学生资助管理中心 https://zxdk.gdut.edu.cn/index.htm ；学工处 https://xsc.gdut.edu.cn/ ；《学生资助工作实施办法》https://xsc.gdut.edu.cn/info/1039/5358.htm ；《全日制本科学生国家奖助学金实施办法》https://xsc.gdut.edu.cn/info/1039/5367.htm ；通知公告 https://zxdk.gdut.edu.cn/index/tzgg/11.htm ；下载中心 https://zxdk.gdut.edu.cn/xzzx.htm 。",
+        "本校：申请与审核多通过「学生工作信息管理系统」，资助咨询 xsczdb@gdut.edu.cn。",
+        "相关制度与表格可在本平台「资助文件」栏目下载本站备份；最新通知与申请表请向学院或学生资助管理中心索取。",
         "",
         f"您提到的问题摘要：「{user_text[:200]}{'…' if len(user_text) > 200 else ''}」",
         "",
@@ -188,18 +189,6 @@ def _soul_window_demo_reply(user_text: str) -> str:
     if any(k in t for k in ("睡不着", "失眠", "焦虑", "抑郁", "想哭")):
         body += "\n（提示）演示模式下无法做睡眠或情绪「诊断」；规律作息、适度运动与线下咨询更值得优先考虑。\n\n"
     return head + body + tail
-
-
-def _hongfan_demo_reply(user_text: str, course_tag: str | None) -> str:
-    label = HONGFAN_COURSE_LABELS.get(course_tag or "", "")
-    head = "【红帆知海·演示模式】未接通大模型，以下为固定说明。"
-    course_line = f"\n你选择的读本侧重：{label}" if label else "\n（未选择读本侧重，可点击上方课本后再提问）"
-    tail = (
-        "\n\n可在此做概念梳理、易混点对比与复习提纲。配置 OPENAI_API_KEY 并重启后端后，可获得生成式讲解。"
-        "\n\n说明：不提供任何教材或题库的逐页电子全文；正式学习与考试请以课堂与正版教材为准。"
-        f"\n\n你的提问摘要：「{user_text[:180]}{'…' if len(user_text) > 180 else ''}」"
-    )
-    return head + course_line + tail
 
 
 def _extract_assistant_text(data: dict) -> str:
@@ -263,27 +252,23 @@ async def _chat_core(body: ChatRequest) -> ChatResponse:
     user_messages = [m for m in body.messages if m.role == "user"]
     last_user = user_messages[-1].content if user_messages else ""
 
-    scope = body.app_scope if body.app_scope in ("policy", "hongfan", "soul_window") else "policy"
+    scope = body.app_scope if body.app_scope in ("policy", "soul_window") else "policy"
 
     brain = resolve_brain()
     if not brain:
-        if scope == "hongfan":
+        if scope == "soul_window":
             return ChatResponse(
-                reply=_hongfan_demo_reply(last_user, body.course_tag),
+                reply=_strip_external_urls(_soul_window_demo_reply(last_user)),
                 mode="demo",
             )
-        if scope == "soul_window":
-            return ChatResponse(reply=_soul_window_demo_reply(last_user), mode="demo")
         atts = suggest_doc_attachments(last_user)
         return ChatResponse(
-            reply=_demo_reply(last_user),
+            reply=_strip_external_urls(_demo_reply(last_user)),
             mode="demo",
             attachments=[ChatAttachment(**a) for a in atts] if atts else None,
         )
 
-    if scope == "hongfan":
-        system = HONGFAN_SYSTEM_PROMPT + hongfan_course_line(body.course_tag)
-    elif scope == "soul_window":
+    if scope == "soul_window":
         system = SOUL_WINDOW_SYSTEM_PROMPT
     else:
         system = SYSTEM_PROMPT
@@ -336,7 +321,7 @@ async def _chat_core(body: ChatRequest) -> ChatResponse:
         ) from None
 
     try:
-        reply = _extract_assistant_text(data)
+        reply = _strip_external_urls(_extract_assistant_text(data))
     except (KeyError, IndexError, TypeError) as e:
         raise HTTPException(
             status_code=502,
