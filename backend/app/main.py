@@ -16,7 +16,13 @@ from app.policy_context import SYSTEM_PROMPT
 from app.rag_loader import get_rag_chunks_and_sources
 from app.rag_selection import select_relevant_chunks
 from app.psyche_context import SOUL_WINDOW_SYSTEM_PROMPT
-from app.soul_safety import check_policy_model_output, check_soul_model_output, check_soul_user_input
+from app.soul_safety import (
+    check_policy_model_output,
+    check_prohibited_model_output,
+    check_prohibited_user_input,
+    check_soul_model_output,
+    check_soul_user_input,
+)
 from app.routers import intelligence
 
 
@@ -252,6 +258,14 @@ async def _chat_core(body: ChatRequest) -> ChatResponse:
 
     scope = body.app_scope if body.app_scope in ("policy", "soul_window") else "policy"
 
+    prohibited = check_prohibited_user_input(last_user, body.messages)
+    if prohibited:
+        logging.info("input blocked (prohibited): %s scope=%s", prohibited.kind.value, scope)
+        return ChatResponse(
+            reply=_strip_external_urls(prohibited.reply),
+            mode="safe",
+        )
+
     if scope == "soul_window":
         safety = check_soul_user_input(last_user, body.messages)
         if safety:
@@ -346,10 +360,13 @@ async def _chat_core(body: ChatRequest) -> ChatResponse:
         policy_safe = check_policy_model_output(reply)
         if policy_safe:
             reply = policy_safe
+        prohibited_out = check_prohibited_model_output(reply)
+        if prohibited_out:
+            reply = prohibited_out
         atts = suggest_doc_attachments(last_user)
         return ChatResponse(
             reply=_strip_external_urls(reply),
-            mode="llm" if not policy_safe else "safe",
+            mode="llm" if not (policy_safe or prohibited_out) else "safe",
             attachments=[ChatAttachment(**a) for a in atts] if atts else None,
         )
     blocked = check_soul_model_output(reply)

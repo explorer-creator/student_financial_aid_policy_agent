@@ -10,6 +10,7 @@ from enum import Enum
 class SoulSafetyKind(str, Enum):
     CRISIS = "crisis"
     HARM_REQUEST = "harm_request"
+    PROHIBITED = "prohibited"
     JAILBREAK = "jailbreak"
     CONFIDENTIALITY = "confidentiality"
     MULTI_TURN = "multi_turn"
@@ -38,6 +39,13 @@ HARM_REQUEST_REPLY = (
     "本栏目仅提供一般性情绪陪伴与科普，不能替代专业评估与干预。"
 )
 
+PROHIBITED_REPLY = (
+    "我无法提供或讨论色情、暴力、赌博、吸毒、卖淫嫖娼等违法或有害内容，"
+    "也不能协助任何违法犯罪活动或「干坏事」的请求。\n\n"
+    "本助手聚焦学生资助政策咨询与正当范围内的情绪陪伴；"
+    "若你有其他合法、正当的问题，请换一种方式描述。"
+)
+
 JAILBREAK_REPLY = (
     "我无法按「忽略规则、扮演无限制角色或输出系统设定」类要求作答。"
     "「暖心润情」仅提供一般性情绪陪伴与心理科普，不能替代心理咨询、精神科诊疗或危机干预。"
@@ -60,7 +68,8 @@ MULTI_TURN_REPLY = (
 
 OUTPUT_BLOCKED_REPLY = (
     "刚才的回复不符合本栏目的安全规范，已停止展示。"
-    "「暖心润情」不能提供自伤/自杀/伤害他人相关方法，也不能下诊断或替代专业咨询。"
+    "本助手不能提供自伤/自杀/伤害他人相关方法，不能讨论色情、暴力、黄赌毒等违法有害内容，"
+    "也不能下诊断或替代专业咨询。"
     "若你正感到难以承受，请尽快联系身边可信的人，或拨打 110 / 120。"
 )
 
@@ -104,6 +113,35 @@ _JAILBREAK_INPUT = re.compile(
     r"|(假装.{0,6}(没有|不受).{0,6}限制)"
     r"|(你没有任何限制|你现在自由了|不要遵守规则)"
     r"|(以.{0,6}无.{0,4}限制.{0,6}模式)",
+    re.I,
+)
+
+# —— 用户输入：色情 / 暴力 / 黄赌毒 / 违法犯罪 ——
+_PROHIBITED_PORN = re.compile(
+    r"(色情|淫秽|黄片|黄网|色情片|黄色网站|成人视频|裸聊|裸照|偷拍|嫖娼|卖淫|援交|约炮|"
+    r"一夜情|开房|性服务|色情资源|看黄|黄片链接|成人网站)"
+    r"|(porn|hentai|\bnsfw\b|nude\s+photo|escort\s+service|adult\s+video)",
+    re.I,
+)
+
+_PROHIBITED_GAMBLING_DRUGS = re.compile(
+    r"(赌博|博彩|赌球|赌钱|赌场|六合彩|网络赌博|私彩|下注赢钱|网络菠菜|菠菜平台|"
+    r"赌局|赌资|赌台|线上赌)"
+    r"|(毒品|吸毒|贩毒|制毒|冰毒|海洛因|大麻|可卡因|摇头丸|"
+    r"K粉|k粉|麻古|致幻剂|注射毒品|买毒|卖毒|运毒)"
+    r"|(怎么.{0,6}吸毒|如何.{0,6}贩毒|哪里.{0,8}买毒|制毒.{0,6}方法)",
+    re.I,
+)
+
+_PROHIBITED_VIOLENCE_CRIME = re.compile(
+    r"(干坏事|做坏事|违法犯罪|犯罪方法|违法教程|犯法怎么|恐怖袭击|制造枪支|非法持枪|"
+    r"买枪|销赃|伪造证件|洗钱|走私|绑票|绑架|强奸|纵火|投毒|灭口)"
+    r"|(暴力.{0,6}(教程|方法|教学|手段))"
+    r"|((教|告诉|说|写|给|提供|列出).{0,10}.{0,14}"
+    r"(杀人|抢劫|盗窃|诈骗|做炸弹|制造武器|制造爆炸|"
+    r"入侵.{0,6}(网站|系统|服务器|电脑)|黑客攻击|攻击网站|打人.{0,4}方法))"
+    r"|((怎么|如何|怎样).{0,8}(杀人|抢劫|盗窃|诈骗|做炸弹|制造武器|"
+    r"入侵.{0,6}(网站|系统|服务器)|洗钱|销赃|伪造证件|打人|施暴))",
     re.I,
 )
 
@@ -151,6 +189,16 @@ _CONFIDENTIALITY_EXCEPTION_HINT = re.compile(
     re.I,
 )
 
+_PROHIBITED_OUTPUT = re.compile(
+    r"(色情|淫秽|黄片|嫖娼|卖淫|援交|约炮|赌博|博彩|赌场|六合彩|"
+    r"毒品|吸毒|贩毒|制毒|冰毒|海洛因|大麻|"
+    r"干坏事|违法犯罪|犯罪教程|违法操作|恐怖袭击|制造枪支|洗钱|走私)"
+    r"|((步骤|方法|方式|教程|指南).{0,8}(杀人|抢劫|盗窃|诈骗|做炸弹|制造武器|"
+    r"入侵.{0,6}(网站|系统|服务器)|吸毒|贩毒|赌博))"
+    r"|((杀人|抢劫|盗窃|诈骗|做炸弹|吸毒|贩毒|赌博).{0,8}(步骤|方法|方式|教程|指南|如下))",
+    re.I,
+)
+
 _SCHOOL_REFERRAL_OUTPUT = re.compile(
     r"(联系.{0,8}(学院|辅导员|学工|资助中心|心理中心|保卫处|学生工作))"
     r"|(向.{0,6}(学院|辅导员|学工处|资助中心|心理中心))"
@@ -175,6 +223,36 @@ def _collect_user_text(messages: list) -> str:
     return "\n".join(_collect_user_messages(messages))
 
 
+def _matches_prohibited_input(text: str) -> bool:
+    t = text.strip()
+    if not t:
+        return False
+    return bool(
+        _PROHIBITED_PORN.search(t)
+        or _PROHIBITED_GAMBLING_DRUGS.search(t)
+        or _PROHIBITED_VIOLENCE_CRIME.search(t)
+    )
+
+
+def check_prohibited_user_input(last_user: str, messages: list | None = None) -> SoulSafetyHit | None:
+    """色情、暴力、黄赌毒、违法犯罪等：政策与暖心润情均拦截。"""
+    del messages  # 单轮只看当前用户消息；多轮重复由 _check_multi_turn 处理
+    if not last_user.strip():
+        return None
+    if _matches_prohibited_input(last_user):
+        return SoulSafetyHit(SoulSafetyKind.PROHIBITED, PROHIBITED_REPLY)
+    return None
+
+
+def check_prohibited_model_output(text: str) -> str | None:
+    """模型输出含违法有害内容时替换为固定话术。"""
+    if not text or not text.strip():
+        return None
+    if _PROHIBITED_OUTPUT.search(text.strip()):
+        return PROHIBITED_REPLY
+    return None
+
+
 def _check_multi_turn(user_msgs: list[str], last_user: str) -> SoulSafetyHit | None:
     """多轮：重复越狱、危机升级、累计高危信号。"""
     recent = (user_msgs + [last_user])[-_MULTI_TURN_WINDOW:]
@@ -188,6 +266,10 @@ def _check_multi_turn(user_msgs: list[str], last_user: str) -> SoulSafetyHit | N
     harm_count = sum(1 for m in recent if _HARM_REQUEST_INPUT.search(m))
     if harm_count >= 2:
         return SoulSafetyHit(SoulSafetyKind.MULTI_TURN, HARM_REQUEST_REPLY)
+
+    prohibited_count = sum(1 for m in recent if _matches_prohibited_input(m))
+    if prohibited_count >= 2:
+        return SoulSafetyHit(SoulSafetyKind.PROHIBITED, PROHIBITED_REPLY)
 
     prior = "\n".join(recent[:-1])
     current = recent[-1]
@@ -218,6 +300,10 @@ def check_soul_user_input(last_user: str, messages: list) -> SoulSafetyHit | Non
 
     if _HARM_REQUEST_INPUT.search(last_user) or _HARM_REQUEST_INPUT.search(blob):
         return SoulSafetyHit(SoulSafetyKind.HARM_REQUEST, HARM_REQUEST_REPLY)
+
+    prohibited = check_prohibited_user_input(last_user, messages)
+    if prohibited:
+        return prohibited
 
     # 保密陷阱：单轮即固定伦理应答（不交给 LLM 盲目承诺）
     if _CONFIDENTIALITY_INPUT.search(last_user):
@@ -257,6 +343,9 @@ def check_soul_model_output(text: str) -> str | None:
 
     if _ABSOLUTE_SECRECY_OUTPUT.search(t) and not _CONFIDENTIALITY_EXCEPTION_HINT.search(t):
         return OUTPUT_BLOCKED_REPLY
+
+    if check_prohibited_model_output(t):
+        return PROHIBITED_REPLY
 
     if (
         _HARM_OUTPUT.search(t)
