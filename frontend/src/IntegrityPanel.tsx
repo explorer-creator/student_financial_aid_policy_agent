@@ -72,7 +72,7 @@ export function IntegrityPanel({ onBack }: { onBack: () => void }) {
     <>
       <div className="chat-slim-header">
         <div className="chat-slim-brand">
-          <img className="logo logo-sm" src={AVATAR_SRC} alt="广东工业大学校徽" loading="eager" decoding="async" />
+          <img className="logo logo-sm" src={AVATAR_SRC} alt="助手头像" loading="eager" decoding="async" />
           <h1 className="chat-slim-title">守信立德</h1>
         </div>
       </div>

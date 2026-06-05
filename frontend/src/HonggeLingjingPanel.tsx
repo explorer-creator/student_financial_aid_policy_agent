@@ -5,7 +5,7 @@ const AVATAR_SRC = `${import.meta.env.BASE_URL}gdut-avatar.png`;
 
 function LogoSm() {
   return (
-    <img className="logo logo-sm" src={AVATAR_SRC} alt="广东工业大学校徽" loading="eager" decoding="async" />
+    <img className="logo logo-sm" src={AVATAR_SRC} alt="助手头像" loading="eager" decoding="async" />
   );
 }
 

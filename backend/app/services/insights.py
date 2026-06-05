@@ -113,5 +113,5 @@ def recommend_auto_policies(f: ProfileFlags) -> dict:
 
     return {
         "recommendations": items,
-        "disclaimer": "演示推荐，非录取或审批结果。正式推送须遵守个人信息保护与学校流程。",
+        "disclaimer": "演示推荐，非录取或审批结果。正式推送须遵守个人信息保护与就读高校流程。",
     }

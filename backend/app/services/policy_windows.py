@@ -1,4 +1,4 @@
-"""政策申请窗口期（归纳自常见高校节奏，演示用；每年以广工正式通知为准）。"""
+"""政策申请窗口期（归纳自常见高校节奏，演示用；每年以就读高校正式通知为准）。"""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ POLICY_WINDOWS: list[dict] = [
         "window_id": "difficulty_recognition",
         "title": "家庭经济困难学生认定（申请国家助学金等的前置环节）",
         "category": "school",
-        "typical_period_text": "每学年开学初，常与奖助学金申请衔接（以学院通知为准）",
+        "typical_period_text": "每学年开学初，常与奖助学金申请衔接（以就读高校通知为准）",
         "alert_months": [9, 10],
         "award_ids": ["national_grant", "national_encouragement"],
     },
@@ -45,7 +45,7 @@ POLICY_WINDOWS: list[dict] = [
         "window_id": "school_scholarship_review",
         "title": "校内奖学金、综合测评与奖学金评定",
         "category": "school",
-        "typical_period_text": "每学年综合测评后，一般 9—11 月分批开展（以学院通知为准）",
+        "typical_period_text": "每学年综合测评后，一般 9—11 月分批开展（以就读高校通知为准）",
         "alert_months": [9, 10, 11],
         "award_ids": [
             "school_excellent",

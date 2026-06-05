@@ -19,16 +19,6 @@ _DOC_RULES: list[tuple[list[str], str, str]] = [
         "student-origin-loan-guide.pdf",
         "《生源地助学贷款申请指南》（.pdf）",
     ),
-    (
-        ["国家奖助学金实施办法", "国奖", "励志", "助学金办法", "5367"],
-        "gdut-national-scholarship-undergrad.docx",
-        "《广东工业大学全日制本科学生国家奖助学金实施办法》（.docx）",
-    ),
-    (
-        ["临时困难资助", "临时困难", "证明材料清单"],
-        "gdut-temporary-hardship-aid.docx",
-        "《广东工业大学学生临时困难资助管理办法》（广工大规字〔2024〕14号）（.docx）",
-    ),
 ]
 
 _MAX = 5

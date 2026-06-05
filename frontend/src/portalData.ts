@@ -1,4 +1,4 @@
-/** 门户页：资助政策链接、校区联系（与后端 policy_context 公开信息一致，供前端展示） */
+/** 门户页：资助政策链接（供前端展示） */
 
 export type PolicyLinkItem = { label: string; href?: string; note?: string };
 export type PolicyLinkGroup = { title: string; items: PolicyLinkItem[] };
@@ -12,47 +12,58 @@ export function docHref(file: string): string {
 
 export const POLICY_LINK_GROUPS: PolicyLinkGroup[] = [
   {
-    title: "快捷主题对应文件下载区",
+    title: "国家及省级权威政策文件（本站整理·智能问答依据）",
+    items: [
+      {
+        label:
+          "《关于调整高等教育阶段和高中阶段国家奖助学金政策的通知》（财教〔2024〕181号）",
+        href: docHref("policies/policy-caijiao-2024-181.md"),
+        note: "国奖 10000 元、国励 6000 元、国助平均 3700 元等",
+      },
+      {
+        label: "《关于调整完善国家助学贷款有关政策的通知》（财教〔2024〕188号）",
+        href: docHref("policies/policy-caijiao-2024-188.md"),
+        note: "本专科贷款额度 20000 元/年、LPR 减 70BP",
+      },
+      {
+        label: "《学生资助资金管理办法》（财教〔2021〕310号）核心节选",
+        href: docHref("policies/policy-caijiao-2021-310.md"),
+        note: "资助体系母本、兼得规则、管理职责",
+      },
+      {
+        label: "《广东省学生资助资金管理实施办法》（粤财规〔2026〕1号）节选",
+        href: docHref("policies/policy-yuecaigui-2026-1.md"),
+        note: "广东省执行口径与分档标准",
+      },
+      {
+        label: "《高等学校学生勤工助学管理办法（2018年修订）》（教财〔2018〕12号）",
+        href: docHref("policies/policy-jiaocai-2018-12-work-study.md"),
+        note: "固定岗按月、临时岗不低于 12 元/时",
+      },
+      {
+        label: "高校本专科生教育阶段资助政策简介与综合问答",
+        href: docHref("policies/policy-undergrad-subsidy-overview.md"),
+        note: "奖贷助勤补免体系速查",
+      },
+    ],
+  },
+  {
+    title: "表格与办事指南下载",
     items: [
       {
         label: "《生源地助学贷款申请指南》（.pdf）",
         href: docHref("student-origin-loan-guide.pdf"),
       },
       {
-        label: "《广东工业大学全日制本科学生国家奖助学金实施办法》（.docx）",
-        href: docHref("gdut-national-scholarship-undergrad.docx"),
-      },
-      {
-        label: "《广东工业大学家庭经济困难学生认定实施办法》（广工大规字〔2023〕16号）（本站备份）",
-        href: docHref("gdut-student-aid-regulation.doc"),
-      },
-      {
         label: "《广东省家庭经济困难学生认定申请表》（.doc）",
         href: docHref("appendix1-difficulty-recognition-form.doc"),
-      },
-      {
-        label: "《广东省家庭经济困难学生认定工作指标解释》《放弃说明》模板等（请向学院或资助中心索取最新版）",
-      },
-      {
-        label: "《广东工业大学学生临时困难资助管理办法》（广工大规字〔2024〕14号）（.docx）",
-        href: docHref("gdut-temporary-hardship-aid.docx"),
-      },
-      {
-        label: "广东工业大学学生临时困难资助申请表（请向学院或资助中心索取最新版）",
-      },
-      {
-        label: "学生临时困难资助证明材料清单等（请向学院或资助中心索取最新版）",
-      },
-      {
-        label: "《广东工业大学学生资助工作实施办法》（本地 .doc）",
-        href: docHref("gdut-student-aid-regulation.doc"),
       },
       {
         label: "《广东省家庭经济困难学生认定分析表》（.xls）",
         href: docHref("appendix2-difficulty-analysis.xls"),
       },
       {
-        label: "《全日制本科学生勤工助学管理办法》（本地 .docx）",
+        label: "《全日制本科学生勤工助学管理办法》（.docx）",
         href: docHref("gdut-work-study-management.docx"),
       },
     ],
@@ -61,39 +72,9 @@ export const POLICY_LINK_GROUPS: PolicyLinkGroup[] = [
 
 export type CampusBlock = { title: string; lines: string[] };
 
-export const CAMPUS_CONTACT_BLOCKS: CampusBlock[] = [
-  {
-    title: "校级学生资助管理中心",
-    lines: [
-      "业务范围：奖助学金、助学贷款等主咨询入口。",
-      "办公地点：大学城校区生活区东十东座202室（以官网为准）。",
-      "电话：020-39322619、020-39322610",
-      "邮箱：xsczdb@gdut.edu.cn",
-    ],
-  },
-  {
-    title: "主要校区（地址为公开信息归纳）",
-    lines: [
-      "大学城校区（校本部）：广州市番禺区广州大学城外环西路100号",
-      "东风路校区：广州市越秀区东风东路729号",
-      "龙洞校区：广州市天河区迎龙路161号",
-      "番禺校区：广州市番禺区钟村街市广路11号一带（以学校最新公布为准）",
-      "沙河校区：广州市天河区先烈东路131号",
-      "揭阳校区：广东省揭阳市粤东新城大学路1号（区号0663）",
-    ],
-  },
-  {
-    title: "各校区学工联系（转介参考，以学校官网为准）",
-    lines: [
-      "东风路校区 · 就业指导管理服务：020-37626136",
-      "龙洞校区 · 学生就业指导中心：020-87082927",
-      "揭阳校区 · 学生工作办公室：（0663）6603130",
-      "番禺校区 · 学生工作办公室：020-31361917、020-31361920",
-    ],
-  },
-];
+/** 本平台不提供任何高校机构联系方式 */
+export const CAMPUS_CONTACT_BLOCKS: CampusBlock[] = [];
 
-/** 演示：事件处理进度示例数据（非真实工单） */
 export type EventTicket = {
   id: string;
   title: string;
@@ -105,23 +86,23 @@ export type EventTicket = {
 export const MOCK_EVENT_TICKETS: EventTicket[] = [
   {
     id: "ZD-2026-0142",
-    title: "本科生国家助学金学院初审",
+    title: "本科生国家助学金初审",
     type: "奖助评审",
-    status: "学院审核中",
+    status: "审核中",
     updated: "2026-04-08",
   },
   {
     id: "ZD-2026-0138",
     title: "生源地贷款受理证明录入核对",
     type: "助学贷款",
-    status: "待学生补材料",
+    status: "待补材料",
     updated: "2026-04-07",
   },
   {
     id: "ZD-2026-0125",
     title: "临时困难资助申请",
     type: "应急资助",
-    status: "资助中心复审",
+    status: "复审中",
     updated: "2026-04-06",
   },
   {

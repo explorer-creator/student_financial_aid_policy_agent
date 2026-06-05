@@ -1,4 +1,9 @@
-"""从仓库 docs / public/docs 加载文本，切块后供政策对话 RAG 使用（启动时缓存）。"""
+"""从仓库 docs/rag 等目录加载文本，按模块切块供 RAG 使用（启动时缓存）。
+
+知识库分区：
+- policy / subsidy：docs/rag/subsidy（Standard_Subsidy_Policy）
+- soul_window / mental_health：docs/rag/mental_health（Mental_Health_Protocol）
+"""
 
 from __future__ import annotations
 
@@ -9,6 +14,8 @@ from functools import lru_cache
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
+RAG_SCOPES = frozenset({"policy", "soul_window"})
 
 
 def _read_text_file(path: Path) -> str:
@@ -48,24 +55,39 @@ def _chunk_text(text: str, source_label: str, *, max_len: int = 1800, overlap: i
     return out
 
 
-def _discover_doc_roots() -> list[Path]:
-    """兼容：本地 monorepo、Docker（/app/docs）与自定义环境变量。"""
+def _repo_root() -> Path:
     here = Path(__file__).resolve().parent
-    backend = here.parent
-    repo = backend.parent
+    return here.parent.parent
+
+
+def _discover_doc_roots(scope: str = "policy") -> list[Path]:
+    """按对话模块发现文档根目录；资助与心理分库，避免混检。"""
+    if scope not in RAG_SCOPES:
+        scope = "policy"
+
+    repo = _repo_root()
+    backend = Path(__file__).resolve().parent.parent
     roots: list[Path] = []
 
-    # Docker：WORKDIR /app，COPY docs -> /app/docs
-    if (backend / "docs").is_dir():
-        roots.append(backend / "docs")
-    if (backend / "public_docs").is_dir():
-        roots.append(backend / "public_docs")
+    rag_root = repo / "docs" / "rag"
+    if rag_root.is_dir():
+        if scope == "policy":
+            sub = rag_root / "subsidy"
+            if sub.is_dir():
+                roots.append(sub)
+        else:
+            sub = rag_root / "mental_health"
+            if sub.is_dir():
+                roots.append(sub)
 
-    # 本地：repo/docs、repo/frontend/public/docs
-    if (repo / "docs").is_dir():
-        roots.append(repo / "docs")
-    if (repo / "frontend" / "public" / "docs").is_dir():
-        roots.append(repo / "frontend" / "public" / "docs")
+    if scope == "policy":
+        # Docker
+        if (backend / "docs" / "rag" / "subsidy").is_dir():
+            roots.append(backend / "docs" / "rag" / "subsidy")
+        if (backend / "public_docs").is_dir():
+            roots.append(backend / "public_docs")
+        if (repo / "frontend" / "public" / "docs").is_dir():
+            roots.append(repo / "frontend" / "public" / "docs")
 
     for raw in os.environ.get("RAG_EXTRA_DIRS", "").split(","):
         raw = raw.strip()
@@ -85,11 +107,21 @@ def _discover_doc_roots() -> list[Path]:
     return out
 
 
-def _load_raw_chunks() -> tuple[list[str], list[str]]:
+def _should_skip_file(rel_posix: str, scope: str) -> bool:
+    """跳过演示/非政策类 Markdown。"""
+    name = rel_posix.lower()
+    if scope == "policy":
+        skip_markers = ("aigc-app-ppt", "network-communication-ppt")
+        if any(m in name for m in skip_markers):
+            return True
+    return False
+
+
+def _load_raw_chunks(scope: str = "policy") -> tuple[list[str], list[str]]:
     """返回 (chunks, source_labels)，一一对应。"""
     chunks: list[str] = []
     sources: list[str] = []
-    for root in _discover_doc_roots():
+    for root in _discover_doc_roots(scope):
         try:
             paths = sorted(root.rglob("*"))
         except OSError as e:
@@ -105,6 +137,8 @@ def _load_raw_chunks() -> tuple[list[str], list[str]]:
                 rel = path.relative_to(root)
             except ValueError:
                 continue
+            if _should_skip_file(rel.as_posix(), scope):
+                continue
             label = f"{root.name}/{rel.as_posix()}"
             try:
                 if suf == ".docx":
@@ -118,14 +152,25 @@ def _load_raw_chunks() -> tuple[list[str], list[str]]:
                 sources.append(src)
                 chunks.append(ch)
     if chunks:
-        logger.info("RAG 已加载 %s 个文本块，来自目录 %s", len(chunks), [str(r) for r in _discover_doc_roots()])
+        logger.info(
+            "RAG[%s] 已加载 %s 个文本块，来自 %s",
+            scope,
+            len(chunks),
+            [str(r) for r in _discover_doc_roots(scope)],
+        )
     else:
-        logger.info("RAG 未加载任何文档块（未找到 docs 目录或目录为空）")
+        logger.info("RAG[%s] 未加载任何文档块", scope)
     return chunks, sources
 
 
-@lru_cache(maxsize=1)
-def get_rag_chunks_and_sources() -> tuple[tuple[str, ...], tuple[str, ...]]:
-    """进程内缓存；修改文档后需重启后端生效。"""
-    c, s = _load_raw_chunks()
+@lru_cache(maxsize=4)
+def get_rag_chunks_and_sources(scope: str = "policy") -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """进程内缓存；修改文档后需重启后端生效。scope: policy | soul_window"""
+    if scope not in RAG_SCOPES:
+        scope = "policy"
+    c, s = _load_raw_chunks(scope)
     return tuple(c), tuple(s)
+
+
+def clear_rag_cache() -> None:
+    get_rag_chunks_and_sources.cache_clear()

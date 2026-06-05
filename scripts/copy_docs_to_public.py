@@ -23,8 +23,27 @@ MAPPING: list[tuple[str, str]] = [
 ]
 
 
+RAG_SUBSIDY_MAPPING: list[tuple[str, str]] = [
+    ("rag/subsidy/01-财教2024-181-奖助学金调整.md", "policies/policy-caijiao-2024-181.md"),
+    ("rag/subsidy/02-财教2024-188-国家助学贷款.md", "policies/policy-caijiao-2024-188.md"),
+    ("rag/subsidy/03-财教2021-310-学生资助资金管理办法节选.md", "policies/policy-caijiao-2021-310.md"),
+    ("rag/subsidy/04-粤财规2026-1-广东省学生资助实施办法节选.md", "policies/policy-yuecaigui-2026-1.md"),
+    ("rag/subsidy/05-教财2018-12-勤工助学管理办法.md", "policies/policy-jiaocai-2018-12-work-study.md"),
+    ("rag/subsidy/06-高校本专科资助政策简介与综合问答.md", "policies/policy-undergrad-subsidy-overview.md"),
+]
+
+
 def main() -> None:
     os.makedirs(DST, exist_ok=True)
+    for src_rel, dest_rel in RAG_SUBSIDY_MAPPING:
+        src_path = os.path.join(SRC, src_rel)
+        dest_path = os.path.join(DST, dest_rel)
+        if not os.path.isfile(src_path):
+            print(f"SKIP (missing): {src_rel}")
+            continue
+        os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+        shutil.copy2(src_path, dest_path)
+        print(f"OK {dest_rel}")
     for src_name, dest_name in MAPPING:
         src_path = os.path.join(SRC, src_name)
         if not os.path.isfile(src_path):

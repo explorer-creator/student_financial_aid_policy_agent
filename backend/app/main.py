@@ -16,6 +16,7 @@ from app.policy_context import SYSTEM_PROMPT
 from app.rag_loader import get_rag_chunks_and_sources
 from app.rag_selection import select_relevant_chunks
 from app.psyche_context import SOUL_WINDOW_SYSTEM_PROMPT
+from app.soul_safety import check_policy_model_output, check_soul_model_output, check_soul_user_input
 from app.routers import intelligence
 
 
@@ -46,7 +47,7 @@ class UnhandledExceptionMiddleware(BaseHTTPMiddleware):
             )
 
 
-app = FastAPI(title="砺志励行小助手 API", version="0.1.0")
+app = FastAPI(title="砺志励行小助手 API", version="0.2.0")
 app.include_router(intelligence.router, prefix="/api")
 
 origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
@@ -101,9 +102,13 @@ def health():
 @app.get("/api/meta")
 def api_meta():
     """用于确认当前进程是否已加载最新后端代码（与 brain 无关时也可看 revision）。"""
+    p_ch, _ = get_rag_chunks_and_sources("policy")
+    m_ch, _ = get_rag_chunks_and_sources("soul_window")
     return {
         "brain_api_revision": BRAIN_API_REVISION,
         "env_file_exists": ENV_FILE_PATH.is_file(),
+        "rag_policy_chunks": len(p_ch),
+        "rag_mental_health_chunks": len(m_ch),
     }
 
 
@@ -116,16 +121,16 @@ _DASHBOARD_SUMMARY_DEMO: dict = {
         {"category": "社会奖助学金", "submitted": 624, "approved": 512, "rejected": 112},
     ],
     "college_completion_rate": [
-        {"college": "机电工程学院", "completion_rate": 0.92},
-        {"college": "自动化学院", "completion_rate": 0.89},
-        {"college": "计算机学院", "completion_rate": 0.94},
-        {"college": "管理学院", "completion_rate": 0.86},
-        {"college": "材料与能源学院", "completion_rate": 0.9},
+        {"college": "示例院系A", "completion_rate": 0.92},
+        {"college": "示例院系B", "completion_rate": 0.89},
+        {"college": "示例院系C", "completion_rate": 0.94},
+        {"college": "示例院系D", "completion_rate": 0.86},
+        {"college": "示例院系E", "completion_rate": 0.9},
     ],
     "pending_appeals": [
-        {"ticket_id": "APL-2026-0018", "college": "计算机学院", "days_pending": 2, "status": "待辅导员复核"},
-        {"ticket_id": "APL-2026-0021", "college": "管理学院", "days_pending": 4, "status": "待学院评审组意见"},
-        {"ticket_id": "APL-2026-0030", "college": "机电工程学院", "days_pending": 1, "status": "待资助中心确认"},
+        {"ticket_id": "APL-2026-0018", "college": "示例院系C", "days_pending": 2, "status": "待初审复核"},
+        {"ticket_id": "APL-2026-0021", "college": "示例院系D", "days_pending": 4, "status": "待评审组意见"},
+        {"ticket_id": "APL-2026-0030", "college": "示例院系A", "days_pending": 1, "status": "待终审确认"},
     ],
     "disclaimer": "示例数据。生产环境应来自业务数据库与流程系统。",
 }
@@ -133,7 +138,7 @@ _DASHBOARD_SUMMARY_DEMO: dict = {
 
 @app.get("/api/dashboard/summary")
 def dashboard_summary():
-    """管理看板示例：申请进度、学院完成率、待处理异议。"""
+    """管理看板示例：申请进度、单位完成率、待处理异议。"""
     return _DASHBOARD_SUMMARY_DEMO
 
 
@@ -146,11 +151,10 @@ def brain_status():
 def _demo_reply(user_text: str) -> str:
     t = user_text.strip().lower()
     lines = [
-        "【演示模式】未配置大模型 API 密钥，以下为固定示例回复（广东工业大学资助政策）。",
+        "【演示模式】未配置大模型 API 密钥，以下为固定示例回复（国家及常见高校资助政策归纳）。",
         "",
-        "国家层面：本专科国奖10000元/年、励志6000元/年、助学金平均3700元/年（高校在2500—5000元分档）等为近年常见标准，以财教〔2024〕181号等国家文件及学校执行为准。",
-        "本校：申请与审核多通过「学生工作信息管理系统」，资助咨询 xsczdb@gdut.edu.cn。",
-        "相关制度与表格可在本平台「资助文件」栏目下载本站备份；最新通知与申请表请向学院或学生资助管理中心索取。",
+        "国家层面：本专科国奖10000元/年、励志6000元/年、助学金平均3700元/年（高校在2500—5000元分档）等为近年常见标准，以财教〔2024〕181号等国家文件及就读高校执行为准。",
+        "相关制度与表格可在本平台「资助文件」栏目下载本站备份；具体申请流程与材料以就读高校当年通知为准。",
         "",
         f"您提到的问题摘要：「{user_text[:200]}{'…' if len(user_text) > 200 else ''}」",
         "",
@@ -159,19 +163,12 @@ def _demo_reply(user_text: str) -> str:
     if any(k in t for k in ("助学金", "困难", "家庭经济")):
         lines.insert(
             3,
-            "广工国家助学金须一般已认定为家庭经济困难学生；同一学年可同时申请国家助学金与国家奖学金或励志奖学金之一，但国奖与励志不能兼得。",
+            "国家助学金一般须已认定为家庭经济困难学生；同一学年可同时申请国家助学金与国家奖学金或励志奖学金之一，但国奖与励志不能兼得。",
         )
     if any(k in t for k in ("贷款", "生源地", "还款")):
         lines.insert(
             3,
-            "生源地信用助学贷款额度本专科生每年最高约20000元、研究生25000元（财教〔2024〕188号），返校后按学校通知提交受理证明。",
-        )
-    if "广工" in user_text or "工业大" in user_text:
-        lines.insert(3, "广东工业大学绿色通道、勤工助学、临时困难资助等见《学生资助工作实施办法》及当年通知。")
-    if any(k in user_text for k in ("电话", "联系", "咨询", "办公室", "校区")):
-        lines.insert(
-            3,
-            "人工咨询：学生资助管理中心 020-39322619、020-39322610；邮箱 xsczdb@gdut.edu.cn（大学城校区东十东座202室，以官网为准）。",
+            "生源地信用助学贷款额度本专科生每年最高约20000元、研究生25000元（财教〔2024〕188号），返校后按就读高校通知提交受理证明。",
         )
     return "\n".join(lines)
 
@@ -179,11 +176,12 @@ def _demo_reply(user_text: str) -> str:
 def _soul_window_demo_reply(user_text: str) -> str:
     t = user_text.strip()
     head = (
-        "【心灵之窗·演示模式】当前未接通大模型（未配置 OPENAI_API_KEY 或大脑不可用），以下为固定说明，无法针对你的具体情况做个性化回应。\n\n"
+        "【暖心润情·演示模式】当前未接通大模型（未配置 OPENAI_API_KEY 或大脑不可用），以下为固定说明，无法针对你的具体情况做个性化回应。\n\n"
     )
     body = (
-        "你愿意说出来，这本身就很不容易。若你正感到持续低落、焦虑或人际困扰，建议优先联系广东工业大学心理健康教育与咨询中心（预约方式与开放时间以学校官网或学院通知为准），或当地医院心理科/精神科获得专业评估。\n\n"
-        "若你此刻有伤害自己或他人的冲动，请立即联系身边可信的人，或拨打 110 / 120；也可拨打全国心理援助热线（如 400-161-9995，以实际公布为准）。\n\n"
+        "你愿意说出来，这本身就很不容易。若你正感到持续低落、焦虑或人际困扰，可优先考虑规律作息、适度运动，"
+        "并在需要时前往当地正规医疗机构心理科/精神科获得专业评估。\n\n"
+        "若你此刻有伤害自己或他人的冲动，请立即联系身边可信的人，或拨打 110 / 120。\n\n"
     )
     tail = f"你刚才分享的内容摘要：「{t[:200]}{'…' if len(t) > 200 else ''}」\n\n配置 API 密钥并重启后端后，可在此获得由模型生成的倾听与建议（仍不能替代专业心理咨询）。"
     if any(k in t for k in ("睡不着", "失眠", "焦虑", "抑郁", "想哭")):
@@ -254,6 +252,15 @@ async def _chat_core(body: ChatRequest) -> ChatResponse:
 
     scope = body.app_scope if body.app_scope in ("policy", "soul_window") else "policy"
 
+    if scope == "soul_window":
+        safety = check_soul_user_input(last_user, body.messages)
+        if safety:
+            logging.info("soul_window input blocked: %s", safety.kind.value)
+            return ChatResponse(
+                reply=_strip_external_urls(safety.reply),
+                mode="safe",
+            )
+
     brain = resolve_brain()
     if not brain:
         if scope == "soul_window":
@@ -270,21 +277,28 @@ async def _chat_core(body: ChatRequest) -> ChatResponse:
 
     if scope == "soul_window":
         system = SOUL_WINDOW_SYSTEM_PROMPT
+        ch, src = get_rag_chunks_and_sources("soul_window")
+        if ch:
+            rag = select_relevant_chunks(last_user, ch, src, top_k=4, max_chars=7000)
+            if rag:
+                system = f"{SOUL_WINDOW_SYSTEM_PROMPT}\n\n{rag}"
     else:
         system = SYSTEM_PROMPT
-        ch, src = get_rag_chunks_and_sources()
+        ch, src = get_rag_chunks_and_sources("policy")
         if ch:
             rag = select_relevant_chunks(last_user, ch, src)
             if rag:
                 system = f"{SYSTEM_PROMPT}\n\n{rag}"
 
-    temperature = 0.55 if scope == "soul_window" else 0.4
+    temperature = 0.25 if scope == "soul_window" else 0.4
     payload = {
         "model": brain.model,
         "messages": [{"role": "system", "content": system}]
         + [{"role": m.role, "content": m.content} for m in body.messages],
         "temperature": temperature,
     }
+    if scope == "soul_window":
+        payload["max_tokens"] = 480
     headers: dict[str, str] = {"Content-Type": "application/json"}
     if brain.authorization_bearer:
         headers["Authorization"] = f"Bearer {brain.authorization_bearer}"
@@ -329,10 +343,20 @@ async def _chat_core(body: ChatRequest) -> ChatResponse:
         ) from e
 
     if scope == "policy":
+        policy_safe = check_policy_model_output(reply)
+        if policy_safe:
+            reply = policy_safe
         atts = suggest_doc_attachments(last_user)
         return ChatResponse(
-            reply=reply,
-            mode="llm",
+            reply=_strip_external_urls(reply),
+            mode="llm" if not policy_safe else "safe",
             attachments=[ChatAttachment(**a) for a in atts] if atts else None,
         )
-    return ChatResponse(reply=reply, mode="llm")
+    blocked = check_soul_model_output(reply)
+    if blocked:
+        logging.info("soul_window output blocked")
+        reply = blocked
+        mode = "safe"
+    else:
+        mode = "llm"
+    return ChatResponse(reply=_strip_external_urls(reply), mode=mode)

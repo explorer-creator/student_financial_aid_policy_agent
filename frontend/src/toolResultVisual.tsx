@@ -561,7 +561,7 @@ function renderPrecheck(data: Record<string, unknown>): ReactNode {
                 <tr>
                   <th>学号</th>
                   <th>姓名</th>
-                  <th>学院</th>
+                  <th>单位</th>
                   <th>级别</th>
                   <th>说明</th>
                 </tr>
@@ -590,7 +590,7 @@ function renderPrecheck(data: Record<string, unknown>): ReactNode {
                 <tr>
                   <th>学号</th>
                   <th>姓名</th>
-                  <th>学院</th>
+                  <th>单位</th>
                   <th>专业</th>
                   <th>申请意向</th>
                 </tr>
@@ -631,7 +631,7 @@ function renderDashboard(data: Record<string, unknown>): ReactNode {
         </p>
         {cc && (
           <div className="dashboard-section">
-            <h4 className="dashboard-section-title">学院完成率（演示）</h4>
+            <h4 className="dashboard-section-title">单位完成率（演示）</h4>
             <ul className="dashboard-completion-list">
               {cc.map((row, i) => {
                 const pct = Math.round(Number(row.rate) * 100);
@@ -685,7 +685,7 @@ function renderDashboard(data: Record<string, unknown>): ReactNode {
       )}
       {colleges && colleges.length > 0 && (
         <div className="dashboard-section">
-          <h4 className="dashboard-section-title">学院材料完成率（示例）</h4>
+          <h4 className="dashboard-section-title">单位材料完成率（示例）</h4>
           <ul className="dashboard-completion-list">
             {colleges.map((row, i) => {
               const pct = Math.round(Number(row.completion_rate) * 100);

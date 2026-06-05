@@ -42,7 +42,7 @@ def match_awards(p: StudentMatchProfile) -> dict:
             "not_matched": [],
             "summary": {"national_count": 0, "school_count": 0, "social_count": 0},
             "block_reason": "休学状态下多数奖助学金与贷款申请需按学校规定暂停或另行处理，请以当年通知为准。",
-            "disclaimer": "演示匹配引擎，最终以广东工业大学及学院评审与公示为准。",
+            "disclaimer": "演示匹配引擎，最终以就读高校及院系评审与公示为准。",
         }
 
     matched: list[dict] = []
@@ -168,7 +168,7 @@ def match_awards(p: StudentMatchProfile) -> dict:
         p.gpa >= 3.0 and not p.has_major_disciplinary,
         75 if p.gpa >= 3.0 else 30,
         "依综合测评与学校评定办法，学业与表现优良。",
-        "具体奖项名称与比例以学院当年通知为准。",
+        "具体奖项名称与比例以就读高校当年通知为准。",
     )
     add(
         "school_study_pacesetter",
@@ -234,7 +234,7 @@ def match_awards(p: StudentMatchProfile) -> dict:
             social_base,
             68 if social_base else 22,
             "社会捐赠类奖助学金：通常要求品学兼优或家庭经济困难，以当年评选通知为准。",
-            "名额有限，以学院分配与评审为准。",
+            "名额有限，以就读高校分配与评审为准。",
         )
 
     matched.sort(key=lambda x: -x["fit_score"])
@@ -247,7 +247,7 @@ def match_awards(p: StudentMatchProfile) -> dict:
             "school_count": sum(1 for m in matched if m["category"] == "school"),
             "social_count": sum(1 for m in matched if m["category"] == "social"),
         },
-        "disclaimer": "演示匹配引擎，最终以广东工业大学及学院当年评审条件与公示为准。",
+        "disclaimer": "演示匹配引擎，最终以就读高校当年评审条件与公示为准。",
     }
 
 
@@ -274,7 +274,7 @@ def build_push_reminders(p: StudentMatchProfile, month: int) -> dict:
                 "urgency": urgency,
                 "matched_award_ids": overlap,
                 "push_hint": (
-                    "当前处于常见申请窗口，请关注学院/资助中心通知并及时提交材料。"
+                    "当前处于常见申请窗口，请关注就读高校通知并及时提交材料。"
                     if in_window
                     else "当前不在集中提醒月，仍可提前准备材料，并留意下一批次通知。"
                 ),

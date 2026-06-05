@@ -68,5 +68,4 @@ bash scripts/deploy_hongkong_lite.sh
 
 ## 说明
 
-- **学习材料**依赖服务器上的 `02教材5本` 或 `LEARNING_MATERIALS_DIR`；未挂载时仅影响「学习材料」页，不影响政策问答与智能工具。  
 - 我无法代你登录腾讯云或执行 SSH；请在本机终端完成上述命令。

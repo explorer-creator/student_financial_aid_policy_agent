@@ -43,9 +43,6 @@ class Settings(BaseSettings):
 
     cors_origins: str = "*"
 
-    # 思政学习材料根目录（相对路径默认指向仓库根下「02教材5本」；可用绝对路径覆盖）
-    learning_materials_dir: str | None = None
-
     @field_validator("openai_api_key", mode="before")
     @classmethod
     def strip_api_key(cls, v: object) -> object:

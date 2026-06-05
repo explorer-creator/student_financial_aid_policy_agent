@@ -125,5 +125,5 @@ def screen_batch(rows: list[StudentScreeningInput]) -> dict:
         "warn_count": warned,
         "anomalies": full,
         "exception_list": exception_only,
-        "disclaimer": "演示规则引擎，非学校官方结论。正式使用需对接学籍、违纪、资助中心认定数据并履行审批与公示程序。",
+        "disclaimer": "演示规则引擎，非官方结论。正式使用需对接学籍、违纪、资助认定数据并履行审批与公示程序。",
     }

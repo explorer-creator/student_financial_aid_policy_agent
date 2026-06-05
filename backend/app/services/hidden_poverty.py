@@ -52,11 +52,11 @@ def detect_hidden_poverty(rows: list[HiddenPovertyInput]) -> dict:
                     "major": r.major,
                     "risk_score": round(score, 3),
                     "reasons": reasons,
-                    "anonymous_message": f"{r.grade}{r.major}疑似存在经济困难未申请资助个案，建议辅导员主动关怀。",
+                    "anonymous_message": f"{r.grade}{r.major}疑似存在经济困难未申请资助个案，建议关注并主动关怀。",
                 }
             )
 
-    # 匿名汇总（给辅导员/学院）
+    # 匿名汇总（管理侧参考）
     summary: dict[str, int] = {}
     for f in flagged:
         k = f"{f['grade']}|{f['major']}"
@@ -75,6 +75,6 @@ def detect_hidden_poverty(rows: list[HiddenPovertyInput]) -> dict:
     return {
         "flagged_students": flagged,
         "anonymous_warnings": anonymous_warnings,
-        "disclaimer": "结果仅作辅助研判，不作为认定结论。须经辅导员谈心、民主评议和学校认定程序复核。",
+        "disclaimer": "结果仅作辅助研判，不作为认定结论。须经民主评议和就读高校认定程序复核。",
     }
 

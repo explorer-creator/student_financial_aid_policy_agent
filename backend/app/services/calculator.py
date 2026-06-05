@@ -152,6 +152,6 @@ def estimate_aid(payload: AidCalcInput) -> dict:
         "items": items,
         "notes": notes,
         "warnings": warnings,
-        "disclaimer": "演示估算器：具体资格、名额、金额、是否发放以广东工业大学及学院当年评审通知为准。",
+        "disclaimer": "演示估算器：具体资格、名额、金额、是否发放以就读高校当年评审通知为准。",
     }
 
