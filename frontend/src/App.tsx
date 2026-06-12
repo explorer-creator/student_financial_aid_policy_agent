@@ -5,7 +5,6 @@ import { IntegrityPanel } from "./IntegrityPanel";
 import {
   CAMPUS_CONTACT_BLOCKS,
   MOCK_EVENT_TICKETS,
-  POLICY_LINK_GROUPS,
   docHref,
 } from "./portalData";
 import { HonggeLingjingPanel } from "./HonggeLingjingPanel";
@@ -22,7 +21,6 @@ type Tab = "screen" | "insights" | "calculator" | "match" | "ops";
 type MainView =
   | "chat"
   | "tools"
-  | "policy"
   | "contacts"
   | "dashboard"
   | "events"
@@ -37,7 +35,6 @@ const MAIN_VIEW_ORDER: MainView[] = [
   "anti_fraud",
   "soul_window",
   "hongge",
-  "policy",
   "feedback",
 ];
 
@@ -109,7 +106,7 @@ function AgentAvatar({ className, alt }: { className: string; alt: string }) {
 
 function mainViewFromHash(): MainView {
   const raw = window.location.hash.replace(/^#\/?/, "");
-  if (!raw) return "chat";
+  if (!raw || raw === "policy") return "chat";
   return MAIN_VIEW_ORDER.includes(raw as MainView) ? (raw as MainView) : "chat";
 }
 
@@ -248,7 +245,7 @@ async function postChat(
 const ASSISTANT_INTRO =
   "你好，我是「砺志励行小助手」里的资助政策咨询入口。\n\n" +
   "我可以协助你了解国家与常见高校层面的奖助学金、助学贷款、绿色通道、勤工助学、困难认定与申诉渠道等信息。回答基于公开政策归纳，个人能否获评、具体金额与时间，请以你就读高校当年正式通知为准。\n\n" +
-  "本助手不提供任何高校机构联系方式，也不代表某一所高校官方意见。更多栏目（辨诈防骗、砺心立志、守信立德、暖心润情、政策文件等）在侧栏菜单。";
+  "本助手不提供任何高校机构联系方式，也不代表某一所高校官方意见。更多栏目（辨诈防骗、砺心立志、守信立德、暖心润情等）在侧栏菜单。";
 
 const ASSISTANT_SECOND =
   "你可以点击下方快捷主题，或在输入框自由提问。";
@@ -607,7 +604,7 @@ export default function App() {
         const demoReply =
           "【静态演示模式】当前页面部署为静态站点，未连接后端 API。\n\n" +
           "你仍可体验：\n" +
-          "1) 侧栏各模块（问策解惑、辨诈防骗、砺心立志、守信立德、暖心润情、政策文件等）\n" +
+          "1) 侧栏各模块（问策解惑、辨诈防骗、砺心立志、守信立德、暖心润情等）\n" +
           "2) 问策解惑内快捷主题按钮（固定回复与相关文件链接）\n\n" +
           "若需实时智能问答，请部署后端并配置 VITE_API_BASE 指向后端地址。";
         const atts = suggestPolicyDocAttachments(trimmed);
@@ -1349,14 +1346,6 @@ export default function App() {
             <span className="sidebar-link-main">暖心润情</span>
             <span className="sidebar-link-sub">获得情感归属的治愈感</span>
           </button>
-          <button
-            type="button"
-            className={`sidebar-link ${mainView === "policy" ? "active" : ""}`}
-            onClick={() => navigateView("policy")}
-          >
-            <span className="sidebar-link-main">政策文件</span>
-            <span className="sidebar-link-sub">国家与省级政策文件备份</span>
-          </button>
         </nav>
       </aside>
 
@@ -1378,7 +1367,6 @@ export default function App() {
             {mainView === "anti_fraud" && "辨诈防骗"}
             {mainView === "soul_window" && "暖心润情"}
             {mainView === "hongge" && "砺心立志"}
-            {mainView === "policy" && "政策文件"}
             {mainView === "feedback" && "守信立德"}
           </span>
         </div>
@@ -1656,7 +1644,7 @@ export default function App() {
         </div>
         <div className="overview-card">
           <span className="overview-label">推荐入口</span>
-          <strong>先看「资助文件与政策」再办业务</strong>
+          <strong>从「问策解惑」开始咨询</strong>
         </div>
       </section>
 
@@ -2392,36 +2380,6 @@ export default function App() {
         </section>
       )}
         </>
-      )}
-
-      {mainView === "policy" && (
-        <section className="tool-panel portal-page">
-          <h2 className="tool-h2">资助文件与政策链接</h2>
-          <p className="tool-intro">
-            以下为资助相关<strong>国家及省级权威政策</strong>（本站整理，供查阅与智能问答依据）及表格备份，可直接打开或下载；具体名额、时间与材料以就读高校当年正式通知为准。
-          </p>
-          {POLICY_LINK_GROUPS.map((g) => (
-            <div key={g.title} className="portal-block">
-              <h3 className="tool-h3">{g.title}</h3>
-              <ul className="portal-link-list">
-                {g.items.map((item) => (
-                  <li key={item.label + (item.href ?? "")}>
-                    {item.href ? (
-                      <a href={item.href} target="_blank" rel="noopener noreferrer">
-                        {item.label}
-                      </a>
-                    ) : (
-                      <span>{item.label}</span>
-                    )}
-                    {item.note ? (
-                      <span className="portal-link-note"> — {item.note}</span>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </section>
       )}
 
       {mainView === "contacts" && (
