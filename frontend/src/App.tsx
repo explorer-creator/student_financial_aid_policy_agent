@@ -1,11 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import "./App.css";
-import { suggestPolicyDocAttachments } from "./docAttachmentHints";
 import { IntegrityPanel } from "./IntegrityPanel";
 import {
   CAMPUS_CONTACT_BLOCKS,
   MOCK_EVENT_TICKETS,
-  docHref,
 } from "./portalData";
 import { HonggeLingjingPanel } from "./HonggeLingjingPanel";
 import { FraudPreventionPanel } from "./FraudPreventionPanel";
@@ -13,8 +11,7 @@ import { ToolResultVisual } from "./toolResultVisual";
 
 type Role = "user" | "assistant";
 /** 本地 `public/docs` 用 `filename`；学校官网下载页等用 `href` */
-type ChatDocAttachment = { label: string; filename?: string; href?: string };
-type Msg = { role: Role; content: string; attachments?: ChatDocAttachment[] };
+type Msg = { role: Role; content: string };
 type Tab = "screen" | "insights" | "calculator" | "match" | "ops";
 
 /** 侧栏一级页面（#hash 同步，便于收藏） */
@@ -238,7 +235,6 @@ async function postChat(
   return res.json() as Promise<{
     reply: string;
     mode: string;
-    attachments?: ChatDocAttachment[] | null;
   }>;
 }
 
@@ -269,20 +265,12 @@ type QuickOption = {
   id: string;
   label: string;
   reply: string;
-  /** 显式指定下载区；传空数组表示不根据关键词自动附带文件（避免误匹配） */
-  attachments?: ChatDocAttachment[];
 };
 
 const QUICK_OPTIONS: QuickOption[] = [
   {
     id: "loan",
     label: "国家助学贷款如何申请？",
-    attachments: [
-      {
-        label: "《生源地助学贷款申请指南》（.pdf）",
-        filename: "student-origin-loan-guide.pdf",
-      },
-    ],
     reply:
       "【国家助学贷款如何申请】\n\n" +
       "一、学生申请\n" +
@@ -297,7 +285,6 @@ const QUICK_OPTIONS: QuickOption[] = [
   {
     id: "scholarship",
     label: "国家奖助学金有哪些？",
-    attachments: [],
     reply:
       "【国家奖助学金有哪些】\n\n" +
       "（一）本科生国家奖学金\n" +
@@ -312,12 +299,6 @@ const QUICK_OPTIONS: QuickOption[] = [
   {
     id: "grant",
     label: "家庭经济困难认定如何申请？",
-    attachments: [
-      {
-        label: "《广东省家庭经济困难学生认定申请表》（.doc）",
-        filename: "appendix1-difficulty-recognition-form.doc",
-      },
-    ],
     reply:
       "【家庭经济困难认定如何申请】\n\n" +
       "依据《广东省家庭经济困难学生认定实施办法》（粤教助〔2023〕2号）及国家相关文件精神，高校家庭经济困难认定一般按以下程序开展（具体以就读高校当年通知为准）：\n\n" +
@@ -340,7 +321,6 @@ const QUICK_OPTIONS: QuickOption[] = [
   {
     id: "temp_hardship",
     label: "临时困难资助如何申请？",
-    attachments: [],
     reply:
       "【临时困难资助如何申请】\n\n" +
       "许多高校设有临时困难资助项目，用于帮助学生度过在校期间遇到的临时性或突发性困难。一般要求已办理注册手续、遵守校纪校规，且出现影响基本学习生活的经济困难。\n\n" +
@@ -354,7 +334,6 @@ const QUICK_OPTIONS: QuickOption[] = [
   {
     id: "military_funding",
     label: "服义务兵役学费补偿贷款代偿如何申请？",
-    attachments: [],
     reply:
       "【服义务兵役学费补偿贷款代偿及学费资助（示例：2025年工作口径，新学年以学校最新通知为准）】\n\n" +
       "为推进国防和军队现代化建设，鼓励高等学校学生积极应征入伍服义务兵役，提高兵员征集质量，根据《财政部 教育部 人力资源社会保障部 退役军人部 中央军委国防动员部关于印发〈学生资助资金管理办法〉的通知》（财教〔2021〕310号）和有关实施细则要求，现就学生服义务兵役学费补偿贷款代偿及学费资助有关事宜说明如下（年度与时间以当年学校正式通知为准）。\n\n" +
@@ -389,7 +368,6 @@ const QUICK_OPTIONS: QuickOption[] = [
   {
     id: "newborn_temp",
     label: "新生临时困难资助如何申请？",
-    attachments: [],
     reply:
       "【新生临时困难资助如何申请】\n\n" +
       "部分高校对新入学家庭经济困难学生设有一次性临时困难资助（常见为数百元量级，具体以就读高校办法为准）。\n\n" +
@@ -605,32 +583,13 @@ export default function App() {
           "【静态演示模式】当前页面部署为静态站点，未连接后端 API。\n\n" +
           "你仍可体验：\n" +
           "1) 侧栏各模块（问策解惑、辨诈防骗、砺心立志、守信立德、暖心润情等）\n" +
-          "2) 问策解惑内快捷主题按钮（固定回复与相关文件链接）\n\n" +
+          "2) 问策解惑内快捷主题按钮（固定回复）\n\n" +
           "若需实时智能问答，请部署后端并配置 VITE_API_BASE 指向后端地址。";
-        const atts = suggestPolicyDocAttachments(trimmed);
-        setMessages((m) => [
-          ...m,
-          {
-            role: "assistant",
-            content: demoReply,
-            attachments: atts.length ? atts : undefined,
-          },
-        ]);
+        setMessages((m) => [...m, { role: "assistant", content: demoReply }]);
       } else {
         const data = await postChat(history, { appScope: "policy" });
         if (data.mode === "demo") setDemoMode(true);
-        const atts =
-          data.attachments && data.attachments.length > 0
-            ? data.attachments
-            : suggestPolicyDocAttachments(trimmed);
-        setMessages((m) => [
-          ...m,
-          {
-            role: "assistant",
-            content: data.reply,
-            attachments: atts.length ? atts : undefined,
-          },
-        ]);
+        setMessages((m) => [...m, { role: "assistant", content: data.reply }]);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "发送失败");
@@ -673,18 +632,10 @@ export default function App() {
   const pickQuickOption = (opt: QuickOption) => {
     if (loading) return;
     setError(null);
-    const atts =
-      opt.attachments !== undefined
-        ? opt.attachments
-        : suggestPolicyDocAttachments(`${opt.label}\n${opt.reply}`);
     setMessages((m) => [
       ...m,
       { role: "user", content: opt.label },
-      {
-        role: "assistant",
-        content: opt.reply,
-        attachments: atts.length ? atts : undefined,
-      },
+      { role: "assistant", content: opt.reply },
     ]);
   };
 
@@ -1399,42 +1350,6 @@ export default function App() {
                   )}
                   <div className={`bubble ${msg.role}`}>
                     <div className="bubble-text">{msg.content}</div>
-                    {msg.role === "assistant" && msg.attachments && msg.attachments.length > 0 && (
-                      <div className="chat-attachments" aria-label="相关文件下载">
-                        <div className="chat-attachments-title">相关文件</div>
-                        <div className="chat-attachments-list">
-                          {msg.attachments.map((a, ai) => {
-                            const rawHref =
-                              a.href ?? (a.filename ? docHref(a.filename) : undefined);
-                            const href =
-                              rawHref && !/^https?:\/\//i.test(rawHref)
-                                ? rawHref
-                                : a.filename
-                                  ? docHref(a.filename)
-                                  : undefined;
-                            if (!href) {
-                              return (
-                                <span key={`${a.label}-${ai}`} className="chat-attachment-link">
-                                  {a.label}
-                                </span>
-                              );
-                            }
-                            return (
-                              <a
-                                key={href + a.label + ai}
-                                className="chat-attachment-link"
-                                href={href}
-                                {...(a.filename ? { download: true } : {})}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                {a.label}
-                              </a>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </div>
               ))}

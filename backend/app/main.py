@@ -11,7 +11,6 @@ from starlette.responses import JSONResponse
 
 from app.brain import BRAIN_API_REVISION, brain_status_dict, resolve_brain
 from app.config import ENV_FILE_PATH, settings
-from app.doc_attachments import suggest_doc_attachments
 from app.policy_context import SYSTEM_PROMPT
 from app.rag_loader import get_rag_chunks_and_sources
 from app.rag_selection import select_relevant_chunks
@@ -282,11 +281,9 @@ async def _chat_core(body: ChatRequest) -> ChatResponse:
                 reply=_strip_external_urls(_soul_window_demo_reply(last_user)),
                 mode="demo",
             )
-        atts = suggest_doc_attachments(last_user)
         return ChatResponse(
             reply=_strip_external_urls(_demo_reply(last_user)),
             mode="demo",
-            attachments=[ChatAttachment(**a) for a in atts] if atts else None,
         )
 
     if scope == "soul_window":
@@ -363,11 +360,9 @@ async def _chat_core(body: ChatRequest) -> ChatResponse:
         prohibited_out = check_prohibited_model_output(reply)
         if prohibited_out:
             reply = prohibited_out
-        atts = suggest_doc_attachments(last_user)
         return ChatResponse(
             reply=_strip_external_urls(reply),
             mode="llm" if not (policy_safe or prohibited_out) else "safe",
-            attachments=[ChatAttachment(**a) for a in atts] if atts else None,
         )
     blocked = check_soul_model_output(reply)
     if blocked:
