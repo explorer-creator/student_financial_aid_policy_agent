@@ -7,6 +7,7 @@ import {
 } from "./portalData";
 import { HonggeLingjingPanel } from "./HonggeLingjingPanel";
 import { FraudPreventionPanel } from "./FraudPreventionPanel";
+import { PolicyLinkGamePanel } from "./PolicyLinkGamePanel";
 import { ToolResultVisual } from "./toolResultVisual";
 
 type Role = "user" | "assistant";
@@ -25,6 +26,7 @@ type MainView =
   | "admin"
   | "soul_window"
   | "hongge"
+  | "link_game"
   | "anti_fraud";
 
 const MAIN_VIEW_ORDER: MainView[] = [
@@ -32,6 +34,7 @@ const MAIN_VIEW_ORDER: MainView[] = [
   "anti_fraud",
   "soul_window",
   "hongge",
+  "link_game",
   "feedback",
 ];
 
@@ -238,10 +241,17 @@ async function postChat(
   }>;
 }
 
+/** 去掉回答末尾「相关文件：…」段落，避免快捷主题或模型回复附带下载引导 */
+function stripRelatedFilesSection(text: string): string {
+  const match = text.match(/\n\s*相关文件(?:（[^）]*）)?\s*[:：][\s\S]*$/);
+  if (!match || match.index === undefined) return text;
+  return text.slice(0, match.index).trimEnd();
+}
+
 const ASSISTANT_INTRO =
   "你好，我是「砺志励行小助手」里的资助政策咨询入口。\n\n" +
   "我可以协助你了解国家与常见高校层面的奖助学金、助学贷款、绿色通道、勤工助学、困难认定与申诉渠道等信息。回答基于公开政策归纳，个人能否获评、具体金额与时间，请以你就读高校当年正式通知为准。\n\n" +
-  "本助手不提供任何高校机构联系方式，也不代表某一所高校官方意见。更多栏目（辨诈防骗、砺心立志、守信立德、暖心润情等）在侧栏菜单。";
+  "本助手不提供任何高校机构联系方式，也不代表某一所高校官方意见。更多栏目（辨诈防骗、砺心立志、资助连连看、守信立德、暖心润情等）在侧栏菜单。";
 
 const ASSISTANT_SECOND =
   "你可以点击下方快捷主题，或在输入框自由提问。";
@@ -279,8 +289,7 @@ const QUICK_OPTIONS: QuickOption[] = [
       "贷款学生返校后需按就读高校当年通知提交《受理证明》，空白处注明学号与联系方式。具体提交方式、时间与绿色通道安排以就读高校正式通知为准。\n\n" +
       "三、缴费处理\n" +
       "1. 贷款学生原则上只需缴纳超出贷款金额部分的欠费，剩余欠款待贷款到账后由高校统一抵扣，无需提前全额缴纳。\n" +
-      "2. 助学贷款一般在11月前后由贷款银行拨付至高校账户，再由高校财务部门抵扣欠费；如有结余，通常在第一学期末退回至学生银行卡。请确保在高校财务系统绑定本人有效一类银行卡。\n\n" +
-      "相关文件：《生源地助学贷款申请指南》（.pdf）",
+      "2. 助学贷款一般在11月前后由贷款银行拨付至高校账户，再由高校财务部门抵扣欠费；如有结余，通常在第一学期末退回至学生银行卡。请确保在高校财务系统绑定本人有效一类银行卡。",
   },
   {
     id: "scholarship",
@@ -292,9 +301,7 @@ const QUICK_OPTIONS: QuickOption[] = [
       "（二）本科生国家励志奖学金\n" +
       "奖励对象是品学兼优、家庭经济困难的二年级及以上的普通高校全日制本科在校生，奖励标准为每生每年6000元。同一学年内，获得国家励志奖学金的家庭经济困难学生可以同时申请并获得国家助学金，但不能同时获得国家奖学金。\n\n" +
       "（三）本科生国家助学金\n" +
-      "资助对象是家庭经济困难的普通高校全日制本科在校学生（含预科生），平均资助标准为每生每年3700元，具体标准由学校在每生每年2500-5000元范围内确定，分为2-3档。全日制在校退役士兵学生原则上都可享受本科生国家助学金，资助标准为每生每年3700元。\n\n" +
-      "相关文件：\n" +
-      "1. 国家及就读高校奖助学金实施办法（以当年正式文件为准）",
+      "资助对象是家庭经济困难的普通高校全日制本科在校学生（含预科生），平均资助标准为每生每年3700元，具体标准由学校在每生每年2500-5000元范围内确定，分为2-3档。全日制在校退役士兵学生原则上都可享受本科生国家助学金，资助标准为每生每年3700元。",
   },
   {
     id: "grant",
@@ -312,11 +319,7 @@ const QUICK_OPTIONS: QuickOption[] = [
       "三、注意事项\n" +
       "1. 自愿申请，诚实提交；特殊群体学生放弃申请需提供书面说明。\n" +
       "2. 严禁弄虚作假，一经查实将追回资助并按相关规定处理。\n" +
-      "3. 申请材料应妥善归档保存。\n\n" +
-      "相关文件：\n" +
-      "1. 《广东省家庭经济困难学生认定申请表》\n" +
-      "2. 《广东省家庭经济困难学生认定分析表》\n" +
-      "3. 《广东省家庭经济困难学生认定工作指标解释》",
+      "3. 申请材料应妥善归档保存。",
   },
   {
     id: "temp_hardship",
@@ -360,10 +363,7 @@ const QUICK_OPTIONS: QuickOption[] = [
       "（二）全日制在校退役士兵本科生国家助学金标准为每学期1850元（以学校当年执行通知为准）。\n\n" +
       "三、报送材料及相关要求（摘要）\n" +
       "（一）学生申请材料：学生按照不同类型，需准备《入伍通知书》复印件、登录全国征兵网在线填写打印的《应征入伍服兵役高等学校学生国家教育资助申请表Ⅰ》或《申请表Ⅱ》一式两份（个人基本信息手填或复印无效），并按要求到征兵部门或退役军人事务部门盖章后提交就读高校审核；毕业生另需提供学位证、毕业证复印件等。退役复学/退役入学另需《退役证》复印件、录取通知书或复学通知书等。\n" +
-      "（二）相关要求及说明：申请退役士兵学费资助的学生应完成退役军人服务中心（站）建档立卡或信息更正；材料需经批准入伍地县级征兵办公室及就读高校财务部门等审核后，按当年流程报送；审批通过后由高校财务部门统一发放（时间以当年通知为准）。\n\n" +
-      "相关文件（表格以全国征兵网及就读高校当年通知版本为准）：\n" +
-      "1. 《应征入伍服兵役高等学校学生国家教育资助申请表》\n" +
-      "2. 退役复学（入学）学生国家教育资助续报表（非首次申请适用）",
+      "（二）相关要求及说明：申请退役士兵学费资助的学生应完成退役军人服务中心（站）建档立卡或信息更正；材料需经批准入伍地县级征兵办公室及就读高校财务部门等审核后，按当年流程报送；审批通过后由高校财务部门统一发放（时间以当年通知为准）。",
   },
   {
     id: "newborn_temp",
@@ -589,7 +589,7 @@ export default function App() {
       } else {
         const data = await postChat(history, { appScope: "policy" });
         if (data.mode === "demo") setDemoMode(true);
-        setMessages((m) => [...m, { role: "assistant", content: data.reply }]);
+        setMessages((m) => [...m, { role: "assistant", content: stripRelatedFilesSection(data.reply) }]);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "发送失败");
@@ -635,7 +635,7 @@ export default function App() {
     setMessages((m) => [
       ...m,
       { role: "user", content: opt.label },
-      { role: "assistant", content: opt.reply },
+      { role: "assistant", content: stripRelatedFilesSection(opt.reply) },
     ]);
   };
 
@@ -1283,6 +1283,14 @@ export default function App() {
           </button>
           <button
             type="button"
+            className={`sidebar-link ${mainView === "link_game" ? "active" : ""}`}
+            onClick={() => navigateView("link_game")}
+          >
+            <span className="sidebar-link-main">资助连连看</span>
+            <span className="sidebar-link-sub">在字表里找政策关键词</span>
+          </button>
+          <button
+            type="button"
             className={`sidebar-link ${mainView === "feedback" ? "active" : ""}`}
             onClick={() => navigateView("feedback")}
           >
@@ -1301,7 +1309,7 @@ export default function App() {
       </aside>
 
       <div
-        className={`main-column layout layout-wide${mainView === "chat" || mainView === "soul_window" || mainView === "hongge" ? " chat-pure" : ""}`}
+        className={`main-column layout layout-wide${mainView === "chat" || mainView === "soul_window" || mainView === "hongge" || mainView === "link_game" ? " chat-pure" : ""}`}
       >
         <div className="mobile-topbar">
           <button
@@ -1318,6 +1326,7 @@ export default function App() {
             {mainView === "anti_fraud" && "辨诈防骗"}
             {mainView === "soul_window" && "暖心润情"}
             {mainView === "hongge" && "砺心立志"}
+            {mainView === "link_game" && "资助连连看"}
             {mainView === "feedback" && "守信立德"}
           </span>
         </div>
@@ -1529,6 +1538,8 @@ export default function App() {
         </>
       ) : mainView === "hongge" ? (
         <HonggeLingjingPanel onBack={() => navigateView("chat")} />
+      ) : mainView === "link_game" ? (
+        <PolicyLinkGamePanel onBack={() => navigateView("chat")} />
       ) : mainView === "anti_fraud" ? (
         <FraudPreventionPanel onBack={() => navigateView("chat")} />
       ) : (

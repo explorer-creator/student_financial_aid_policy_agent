@@ -1853,3 +1853,28 @@ h1 {
     display: none !important;
   }
 }
+
+.main-column.chat-pure .policy-link-game-panel {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  align-items: center;
+  width: 100%;
+}
+
+.policy-link-game-frame {
+  flex: 1;
+  width: min(100%, 480px);
+  min-height: 0;
+  border: 0;
+  background: linear-gradient(165deg, #fff 0%, #fffbf0 100%);
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgb(245 166 35 / 12%);
+}
+
+.policy-link-game-back {
+  flex-shrink: 0;
+  align-self: flex-start;
+  margin-top: 0.35rem;
+}

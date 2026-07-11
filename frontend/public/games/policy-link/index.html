@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>砺志励行团 资助政策连连看</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="game-shell" aria-label="砺志励行团 资助政策连连看">
+      <img
+        class="background-mark"
+        src="assets/素材/file-20260710225112695.jpg"
+        alt=""
+        aria-hidden="true"
+      />
+
+      <header class="top-bar">
+        <h1>砺志励行团 资助政策连连看</h1>
+        <div class="status-panel" aria-label="游戏状态">
+          <div class="counter" id="counter" aria-live="polite">0/12</div>
+          <button class="reset-button" id="resetButton" type="button">重玩</button>
+        </div>
+      </header>
+
+      <section class="board-section" aria-label="字表">
+        <div class="grid-frame">
+          <div class="word-grid" id="wordGrid"></div>
+          <div class="found-layer" id="foundLayer" aria-hidden="true"></div>
+        </div>
+      </section>
+
+      <section class="hint-section" aria-label="提示">
+        <h2>提示</h2>
+        <ol class="hint-list" id="hintList"></ol>
+      </section>
+
+      <div class="celebration-layer" id="celebrationLayer" hidden aria-hidden="true">
+        <canvas class="fireworks-canvas" id="fireworksCanvas" aria-hidden="true"></canvas>
+        <p class="celebration-message" id="celebrationMessage">恭喜达成8个成就</p>
+      </div>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
