@@ -2,13 +2,17 @@
   --black: #1a1a1a;
   --white: #ffffff;
   --cream: #fffbf0;
+  --cream-deep: #fff4d6;
   --warm-border: #e8d4a8;
   --gold: #ffc105;
+  --gold-deep: #f5a623;
   --ok: #389e0d;
+  --ok-bg: #f6ffed;
   --bad: #cf1322;
   --line: #f5a623;
   --sky: #e6f4ff;
   --door: #8c6239;
+  --panel-shadow: 0 8px 24px rgb(245 166 35 / 14%);
 }
 
 * {
@@ -26,7 +30,7 @@ body {
   min-height: 100svh;
   place-items: center;
   overflow: hidden;
-  background: var(--white);
+  background: linear-gradient(165deg, #e6f4ff 0%, var(--white) 50%, #fff9eb 100%);
   color: var(--black);
   font-family:
     "Microsoft YaHei",
@@ -51,7 +55,25 @@ button {
   flex-direction: column;
   overflow: hidden;
   padding: 14px;
-  background: linear-gradient(180deg, var(--sky) 0%, var(--white) 28%);
+  background: linear-gradient(180deg, rgb(230 244 255 / 70%) 0%, rgb(255 255 255 / 95%) 35%, rgb(255 251 240 / 90%) 100%);
+  border: 2px solid var(--warm-border);
+  border-radius: 16px;
+  box-shadow: var(--panel-shadow);
+}
+
+.background-mark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 0;
+  width: 92%;
+  max-height: 38%;
+  object-fit: contain;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  user-select: none;
+  opacity: 0.32;
+  filter: brightness(1.15) saturate(0.88);
 }
 
 .top-bar {
@@ -60,13 +82,16 @@ button {
   gap: 10px;
   align-items: start;
   z-index: 2;
+  width: 100%;
 }
 
 h1 {
   margin: 0;
-  font-size: 1.05rem;
+  font-size: 1.08rem;
   line-height: 1.25;
   font-weight: 800;
+  text-shadow: 0 1px 0 rgb(255 255 255 / 85%);
+  letter-spacing: 0.02em;
 }
 
 .status-panel {
@@ -77,22 +102,30 @@ h1 {
 
 .counter {
   min-width: 54px;
-  padding: 4px 6px;
+  padding: 5px 8px;
   border: 2px solid var(--warm-border);
   background: linear-gradient(180deg, var(--white), var(--cream));
   font-size: 0.95rem;
   line-height: 1;
+  font-weight: 800;
   text-align: center;
-  border-radius: 6px;
+  border-radius: 999px;
+  box-shadow: 0 2px 6px rgb(245 166 35 / 12%);
 }
 
 .reset-button {
   min-width: 54px;
   min-height: 34px;
   border: 2px solid var(--warm-border);
-  border-radius: 6px;
+  border-radius: 999px;
   background: linear-gradient(180deg, var(--white), #fff8e8);
   cursor: pointer;
+  font-weight: 700;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.reset-button:hover {
+  box-shadow: 0 3px 10px rgb(245 166 35 / 22%);
 }
 
 .reset-button:active {
@@ -101,16 +134,38 @@ h1 {
 
 .game-tip {
   margin: 8px 0 0;
-  font-size: 0.76rem;
+  padding: 7px 10px;
+  font-size: 0.74rem;
   line-height: 1.45;
-  color: #555;
+  color: #5c4a32;
   z-index: 2;
+  border-radius: 10px;
+  background: linear-gradient(90deg, rgb(255 248 232 / 92%), rgb(255 255 255 / 88%));
+  border: 1px solid rgb(232 212 168 / 80%);
+}
+
+.panel-card {
+  padding: 10px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgb(255 255 255 / 88%), rgb(255 251 240 / 82%));
+  border: 2px solid rgb(232 212 168 / 85%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 90%), 0 4px 14px rgb(22 119 255 / 8%);
+  backdrop-filter: blur(2px);
 }
 
 .section-title {
-  margin: 0 0 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 8px;
   font-size: 0.82rem;
   font-weight: 800;
+  color: #0958d9;
+}
+
+.title-icon {
+  font-size: 1rem;
+  line-height: 1;
 }
 
 .letters-section {
@@ -129,39 +184,63 @@ h1 {
 .letter-card {
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 8px;
+  gap: 10px;
   align-items: center;
-  min-height: 52px;
-  padding: 8px 10px;
-  border: 2px solid var(--black);
-  border-radius: 10px;
-  background: linear-gradient(180deg, #fffef8, var(--cream));
+  min-height: 54px;
+  padding: 9px 12px;
+  border: 2px solid rgb(26 26 26 / 88%);
+  border-radius: 12px;
+  background: linear-gradient(135deg, #fffef8 0%, var(--cream) 55%, #fff8e8 100%);
   cursor: grab;
   touch-action: none;
   user-select: none;
+  box-shadow: 0 3px 10px rgb(0 0 0 / 6%);
   transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }
 
+.letter-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 6px,
+    rgb(255 193 7 / 6%) 6px,
+    rgb(255 193 7 / 6%) 12px
+  );
+}
+
+.letter-card {
+  position: relative;
+  overflow: hidden;
+}
+
 .letter-card:hover:not(.is-delivered) {
-  box-shadow: 0 3px 10px rgb(245 166 35 / 18%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgb(245 166 35 / 22%);
 }
 
 .letter-card.is-selected {
   border-color: var(--line);
-  box-shadow: 0 0 0 3px rgb(245 166 35 / 25%);
+  box-shadow: 0 0 0 3px rgb(245 166 35 / 28%);
   transform: scale(1.02);
 }
 
 .letter-card.is-dragging {
-  opacity: 0.85;
+  opacity: 0.88;
   cursor: grabbing;
   z-index: 10;
+  box-shadow: 0 10px 24px rgb(245 166 35 / 28%);
 }
 
 .letter-card.is-delivered {
-  opacity: 0.35;
+  opacity: 0.42;
   cursor: default;
   border-style: dashed;
+  border-color: var(--ok);
   transform: none;
 }
 
@@ -171,11 +250,16 @@ h1 {
 }
 
 .letter-icon {
-  font-size: 1.4rem;
+  position: relative;
+  z-index: 1;
+  font-size: 1.5rem;
   line-height: 1;
+  filter: drop-shadow(0 2px 4px rgb(245 166 35 / 25%));
 }
 
 .letter-text {
+  position: relative;
+  z-index: 1;
   display: grid;
   gap: 2px;
   text-align: left;
@@ -202,6 +286,10 @@ h1 {
   z-index: 1;
 }
 
+.schools-section .section-title {
+  color: #ad6800;
+}
+
 .school-grid {
   flex: 1;
   min-height: 0;
@@ -219,28 +307,44 @@ h1 {
   gap: 4px;
   align-items: end;
   justify-items: center;
-  min-height: 88px;
-  padding: 6px 4px 8px;
-  border: 2px solid var(--black);
-  border-radius: 10px;
-  background: linear-gradient(180deg, #fafafa, #f0f0f0);
+  min-height: 90px;
+  padding: 8px 4px 8px;
+  border: 2px solid rgb(26 26 26 / 88%);
+  border-radius: 12px;
+  background: linear-gradient(180deg, #fafafa 0%, #f0ebe3 100%);
   cursor: pointer;
-  transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  box-shadow: 0 3px 10px rgb(0 0 0 / 6%);
+  transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.school-door::before {
+  content: "";
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 14px solid transparent;
+  border-right: 14px solid transparent;
+  border-bottom: 10px solid #c41e3a;
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 15%));
 }
 
 .school-door:hover:not(.is-hit) {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgb(0 0 0 / 8%);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 18px rgb(245 166 35 / 18%);
 }
 
 .school-door.is-hover {
   border-color: var(--line);
-  background: #fffbe6;
+  background: linear-gradient(180deg, #fffbe6, #fff1b8);
+  box-shadow: 0 0 0 3px rgb(245 166 35 / 22%);
 }
 
 .school-door.is-hit {
   border-color: var(--ok);
-  background: #f6ffed;
+  background: linear-gradient(180deg, var(--ok-bg), #eaffea);
   cursor: default;
 }
 
@@ -250,16 +354,19 @@ h1 {
 }
 
 .school-badge {
-  font-size: 1.1rem;
+  margin-top: 8px;
+  font-size: 1.15rem;
   line-height: 1;
+  filter: drop-shadow(0 2px 3px rgb(0 0 0 / 12%));
 }
 
 .school-gate {
-  width: 70%;
-  height: 36px;
+  width: 68%;
+  height: 34px;
   border: 2px solid var(--door);
-  border-radius: 4px 4px 0 0;
+  border-radius: 5px 5px 0 0;
   background: linear-gradient(180deg, #a67c52, var(--door));
+  box-shadow: inset 0 -4px 8px rgb(0 0 0 / 15%);
 }
 
 .school-name {
@@ -273,17 +380,18 @@ h1 {
   position: absolute;
   top: 4px;
   right: 4px;
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: var(--ok);
+  background: linear-gradient(180deg, #52c41a, var(--ok));
   color: var(--white);
   font-size: 0.65rem;
   font-weight: 800;
   opacity: 0;
   transform: scale(0.5);
+  box-shadow: 0 2px 6px rgb(56 158 13 / 35%);
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
@@ -310,18 +418,22 @@ h1 {
 .feedback {
   min-height: 1.2em;
   margin: 6px 0 0;
-  font-size: 0.78rem;
+  padding: 4px 8px;
+  font-size: 0.76rem;
   font-weight: 700;
   text-align: center;
   z-index: 2;
+  border-radius: 8px;
 }
 
 .feedback.is-ok {
   color: var(--ok);
+  background: rgb(246 255 237 / 80%);
 }
 
 .feedback.is-bad {
   color: var(--bad);
+  background: rgb(255 241 240 / 80%);
 }
 
 .celebration-layer {
@@ -350,12 +462,14 @@ h1 {
   position: relative;
   z-index: 21;
   margin: 0 0 18px;
-  padding: 10px 18px;
+  padding: 12px 20px;
   border: 3px solid var(--black);
-  background: rgb(255 255 255 / 92%);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgb(255 255 255 / 96%), rgb(255 251 240 / 94%));
   font-size: 1.05rem;
   font-weight: 800;
   text-align: center;
+  box-shadow: 0 8px 24px rgb(245 166 35 / 22%);
   animation: pop-in 0.45s ease-out both;
 }
 
@@ -374,6 +488,7 @@ h1 {
 @media (max-height: 720px) {
   .game-shell {
     padding: 10px;
+    border-radius: 12px;
   }
 
   .letter-card {
@@ -385,6 +500,6 @@ h1 {
   }
 
   .school-gate {
-    height: 30px;
+    height: 28px;
   }
 }
