@@ -2,7 +2,7 @@ type PolicyAudienceMatchPanelProps = {
   onBack: () => void;
 };
 
-const GAME_SRC = `${import.meta.env.BASE_URL}games/policy-match/index.html`;
+const GAME_SRC = `${import.meta.env.BASE_URL}games/policy-match/index.html?v=2`;
 
 export function PolicyAudienceMatchPanel({ onBack }: PolicyAudienceMatchPanelProps) {
   return (

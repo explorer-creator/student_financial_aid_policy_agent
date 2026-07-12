@@ -253,23 +253,10 @@ function findDropTarget(clientX, clientY) {
   return el ? el.closest(".school-door") : null;
 }
 
-function startDrag(e, letterEl) {
-  if (deliveredIds.has(letterEl.dataset.id)) return;
-  if (e.pointerType === "mouse" && e.button !== 0) return;
+const DRAG_START_PX = 10;
 
-  selectedLetterId = letterEl.dataset.id;
-  markSelected(selectedLetterId);
-
+function activateDrag(e, letterEl) {
   const rect = letterEl.getBoundingClientRect();
-  dragState = {
-    letterEl,
-    pointerId: e.pointerId,
-    offsetX: e.clientX - rect.left,
-    offsetY: e.clientY - rect.top,
-    hoverSchool: null,
-    ghost: null,
-  };
-
   letterEl.setPointerCapture(e.pointerId);
   letterEl.classList.add("is-dragging");
 
@@ -282,14 +269,57 @@ function startDrag(e, letterEl) {
   ghost.style.pointerEvents = "none";
   ghost.style.zIndex = "999";
   document.body.appendChild(ghost);
-  dragState.ghost = ghost;
 
+  dragState.offsetX = e.clientX - rect.left;
+  dragState.offsetY = e.clientY - rect.top;
+  dragState.ghost = ghost;
+  dragState.active = true;
   setFeedback("拖到对应学校门口松开。");
-  e.preventDefault();
+}
+
+function startDrag(e, letterEl) {
+  if (deliveredIds.has(letterEl.dataset.id)) return;
+  if (e.pointerType === "mouse" && e.button !== 0) return;
+
+  selectedLetterId = letterEl.dataset.id;
+  markSelected(selectedLetterId);
+
+  dragState = {
+    letterEl,
+    pointerId: e.pointerId,
+    startX: e.clientX,
+    startY: e.clientY,
+    offsetX: 0,
+    offsetY: 0,
+    hoverSchool: null,
+    ghost: null,
+    pending: e.pointerType !== "mouse",
+    active: e.pointerType === "mouse",
+  };
+
+  if (dragState.active) {
+    activateDrag(e, letterEl);
+    e.preventDefault();
+  }
 }
 
 function moveDrag(e) {
   if (!dragState || dragState.pointerId !== e.pointerId) return;
+
+  if (dragState.pending) {
+    const dx = e.clientX - dragState.startX;
+    const dy = e.clientY - dragState.startY;
+    if (Math.hypot(dx, dy) < DRAG_START_PX) return;
+    dragState.pending = false;
+    if (Math.abs(dy) > Math.abs(dx)) {
+      dragState = null;
+      return;
+    }
+    activateDrag(e, dragState.letterEl);
+    e.preventDefault();
+  }
+
+  if (!dragState.active) return;
 
   const ghost = dragState.ghost;
   if (ghost) {
@@ -310,6 +340,11 @@ function moveDrag(e) {
 
 function endDrag(e) {
   if (!dragState || dragState.pointerId !== e.pointerId) return;
+
+  if (dragState.pending || !dragState.active) {
+    dragState = null;
+    return;
+  }
 
   const { letterEl, ghost, hoverSchool } = dragState;
   letterEl.releasePointerCapture(e.pointerId);

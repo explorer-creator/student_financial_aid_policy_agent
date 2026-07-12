@@ -2,7 +2,7 @@ type PolicyPostmanPanelProps = {
   onBack: () => void;
 };
 
-const GAME_SRC = `${import.meta.env.BASE_URL}games/policy-postman/index.html`;
+const GAME_SRC = `${import.meta.env.BASE_URL}games/policy-postman/index.html?v=2`;
 
 export function PolicyPostmanPanel({ onBack }: PolicyPostmanPanelProps) {
   return (

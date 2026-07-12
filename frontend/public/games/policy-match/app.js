@@ -18,6 +18,21 @@ const fireworksCanvas = document.getElementById("fireworksCanvas");
 
 const FIREWORKS_DURATION_MS = 2000;
 const FIREWORK_COLORS = ["#ff4d4f", "#ffa940", "#ffd666", "#73d13d", "#40a9ff", "#9254de", "#f759ab"];
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+const PERM_GRADIENT_STOPS = [
+  { offset: "0%", color: "#ff9ec8" },
+  { offset: "45%", color: "#c4a7ff" },
+  { offset: "100%", color: "#69b1ff" },
+];
+
+const TEMP_GRADIENT_STOPS = [
+  { offset: "0%", color: "#ffb3d9", opacity: 0.5 },
+  { offset: "50%", color: "#b8a9ff", opacity: 0.65 },
+  { offset: "100%", color: "#91caff", opacity: 0.8 },
+];
+
+let gradientSeq = 0;
 
 let selectedPolicyId = null;
 let matchedCount = 0;
@@ -54,6 +69,46 @@ function cardCenter(el) {
   };
 }
 
+function getLineDefs() {
+  let defs = linesLayer.querySelector("defs");
+  if (!defs) {
+    defs = document.createElementNS(SVG_NS, "defs");
+    linesLayer.insertBefore(defs, linesLayer.firstChild);
+  }
+  return defs;
+}
+
+function clearDynamicGradients(kind = "") {
+  const selector = kind ? `[id^="line-grad-${kind}-"]` : '[id^="line-grad-"]';
+  getLineDefs().querySelectorAll(selector).forEach((node) => node.remove());
+}
+
+function strokeGradientRef(kind, x1, y1, x2, y2) {
+  const id = `line-grad-${kind}-${gradientSeq++}`;
+  const defs = getLineDefs();
+  const gradient = document.createElementNS(SVG_NS, "linearGradient");
+  gradient.setAttribute("id", id);
+  gradient.setAttribute("gradientUnits", "userSpaceOnUse");
+  gradient.setAttribute("x1", String(x1));
+  gradient.setAttribute("y1", String(y1));
+  gradient.setAttribute("x2", String(x2));
+  gradient.setAttribute("y2", String(y2));
+
+  const stops = kind === "perm" ? PERM_GRADIENT_STOPS : TEMP_GRADIENT_STOPS;
+  stops.forEach((stopDef) => {
+    const stop = document.createElementNS(SVG_NS, "stop");
+    stop.setAttribute("offset", stopDef.offset);
+    stop.setAttribute("stop-color", stopDef.color);
+    if (stopDef.opacity != null) {
+      stop.setAttribute("stop-opacity", String(stopDef.opacity));
+    }
+    gradient.appendChild(stop);
+  });
+
+  defs.appendChild(gradient);
+  return `url(#${id})`;
+}
+
 function curvePathD(x1, y1, x2, y2) {
   const midX = (x1 + x2) / 2;
   const bend = Math.min(36, Math.abs(x2 - x1) * 0.14);
@@ -64,11 +119,14 @@ function curvePathD(x1, y1, x2, y2) {
   return `M ${x1} ${y1} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${x2} ${y2}`;
 }
 
-function drawLine(x1, y1, x2, y2, { stroke = "#f5a623", width = 2.5, dash = "", opacity = 1, className = "" } = {}) {
-  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+function drawLine(x1, y1, x2, y2, { stroke = "#c4a7ff", width = 2.5, dash = "", opacity = 1, className = "", gradientKind = "" } = {}) {
+  const path = document.createElementNS(SVG_NS, "path");
   path.setAttribute("d", curvePathD(x1, y1, x2, y2));
   path.setAttribute("fill", "none");
-  path.setAttribute("stroke", stroke);
+  path.setAttribute(
+    "stroke",
+    gradientKind ? strokeGradientRef(gradientKind, x1, y1, x2, y2) : stroke,
+  );
   path.setAttribute("stroke-width", String(width));
   path.setAttribute("stroke-linecap", "round");
   path.setAttribute("stroke-linejoin", "round");
@@ -81,18 +139,20 @@ function drawLine(x1, y1, x2, y2, { stroke = "#f5a623", width = 2.5, dash = "", 
 
 function clearTempLines() {
   linesLayer.querySelectorAll(".temp-line").forEach((node) => node.remove());
+  clearDynamicGradients("temp");
 }
 
 function redrawPermanentLines() {
   linesLayer.querySelectorAll(".perm-line").forEach((node) => node.remove());
+  clearDynamicGradients("perm");
   permanentLines.forEach(({ policyEl, audienceEl }) => {
     const p = cardCenter(policyEl);
     const a = cardCenter(audienceEl);
     drawLine(p.x, p.y, a.x, a.y, {
-      stroke: "url(#perm-line-gradient)",
       width: 3,
       opacity: 0.88,
       className: "perm-line",
+      gradientKind: "perm",
     });
   });
 }
@@ -146,11 +206,11 @@ function tryMatch(policyId, audienceId) {
     const a = cardCenter(audienceEl);
     clearTempLines();
     drawLine(p.x, p.y, a.x, a.y, {
-      stroke: "#d4a5e8",
       width: 2.5,
       dash: "5 6",
       opacity: 0.58,
       className: "temp-line is-wrong-line",
+      stroke: "#d4a5e8",
     });
     flashWrong(policyEl, audienceEl);
     window.setTimeout(clearTempLines, 450);
@@ -238,11 +298,11 @@ function moveDrag(e) {
   const pos = pointerPos(e);
   clearTempLines();
   drawLine(dragState.start.x, dragState.start.y, pos.x, pos.y, {
-    stroke: "url(#temp-line-gradient)",
     width: 2.5,
     dash: "6 5",
     opacity: 0.78,
     className: "temp-line",
+    gradientKind: "temp",
   });
 }
 
@@ -355,7 +415,9 @@ function resetGame() {
   matchedIds = new Set();
   permanentLines = [];
   dragState = null;
+  gradientSeq = 0;
   linesLayer.querySelectorAll("path").forEach((node) => node.remove());
+  clearDynamicGradients();
   hideCelebration();
   renderLists();
   updateCounter();

@@ -183,16 +183,19 @@ h1 {
 }
 
 .lines-layer .perm-line {
-  filter: url(#line-soft-glow);
+  stroke: #c4a7ff;
+  filter: drop-shadow(0 0 2px rgb(196 167 255 / 40%));
   transition: opacity 0.35s ease;
 }
 
 .lines-layer .temp-line {
+  stroke: #b8a9ff;
   transition: opacity 0.2s ease;
 }
 
 .lines-layer .is-wrong-line {
-  filter: url(#line-soft-glow);
+  stroke: #d4a5e8;
+  filter: drop-shadow(0 0 2px rgb(212 165 232 / 35%));
 }
 
 .match-column {
