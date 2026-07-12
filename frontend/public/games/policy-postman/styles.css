@@ -1,0 +1,390 @@
+:root {
+  --black: #1a1a1a;
+  --white: #ffffff;
+  --cream: #fffbf0;
+  --warm-border: #e8d4a8;
+  --gold: #ffc105;
+  --ok: #389e0d;
+  --bad: #cf1322;
+  --line: #f5a623;
+  --sky: #e6f4ff;
+  --door: #8c6239;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  display: grid;
+  min-height: 100svh;
+  place-items: center;
+  overflow: hidden;
+  background: var(--white);
+  color: var(--black);
+  font-family:
+    "Microsoft YaHei",
+    "PingFang SC",
+    "Noto Sans CJK SC",
+    "Heiti SC",
+    Arial,
+    sans-serif;
+}
+
+button {
+  color: var(--black);
+  font: inherit;
+}
+
+.game-shell {
+  position: relative;
+  display: flex;
+  width: min(100vw, 520px, calc(100svh * 9 / 16));
+  aspect-ratio: 9 / 16;
+  max-height: 100svh;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 14px;
+  background: linear-gradient(180deg, var(--sky) 0%, var(--white) 28%);
+}
+
+.top-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+  z-index: 2;
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1.25;
+  font-weight: 800;
+}
+
+.status-panel {
+  display: grid;
+  gap: 6px;
+  justify-items: end;
+}
+
+.counter {
+  min-width: 54px;
+  padding: 4px 6px;
+  border: 2px solid var(--warm-border);
+  background: linear-gradient(180deg, var(--white), var(--cream));
+  font-size: 0.95rem;
+  line-height: 1;
+  text-align: center;
+  border-radius: 6px;
+}
+
+.reset-button {
+  min-width: 54px;
+  min-height: 34px;
+  border: 2px solid var(--warm-border);
+  border-radius: 6px;
+  background: linear-gradient(180deg, var(--white), #fff8e8);
+  cursor: pointer;
+}
+
+.reset-button:active {
+  transform: translateY(1px);
+}
+
+.game-tip {
+  margin: 8px 0 0;
+  font-size: 0.76rem;
+  line-height: 1.45;
+  color: #555;
+  z-index: 2;
+}
+
+.section-title {
+  margin: 0 0 6px;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.letters-section {
+  margin-top: 10px;
+  z-index: 2;
+}
+
+.letter-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.letter-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+  align-items: center;
+  min-height: 52px;
+  padding: 8px 10px;
+  border: 2px solid var(--black);
+  border-radius: 10px;
+  background: linear-gradient(180deg, #fffef8, var(--cream));
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.letter-card:hover:not(.is-delivered) {
+  box-shadow: 0 3px 10px rgb(245 166 35 / 18%);
+}
+
+.letter-card.is-selected {
+  border-color: var(--line);
+  box-shadow: 0 0 0 3px rgb(245 166 35 / 25%);
+  transform: scale(1.02);
+}
+
+.letter-card.is-dragging {
+  opacity: 0.85;
+  cursor: grabbing;
+  z-index: 10;
+}
+
+.letter-card.is-delivered {
+  opacity: 0.35;
+  cursor: default;
+  border-style: dashed;
+  transform: none;
+}
+
+.letter-card.is-wrong {
+  animation: card-shake 0.35s ease;
+  border-color: var(--bad);
+}
+
+.letter-icon {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.letter-text {
+  display: grid;
+  gap: 2px;
+  text-align: left;
+}
+
+.letter-title {
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.letter-hint {
+  font-size: 0.68rem;
+  color: #666;
+  line-height: 1.35;
+}
+
+.schools-section {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin-top: 10px;
+  z-index: 1;
+}
+
+.school-grid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 8px;
+  overflow-y: auto;
+}
+
+.school-door {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 4px;
+  align-items: end;
+  justify-items: center;
+  min-height: 88px;
+  padding: 6px 4px 8px;
+  border: 2px solid var(--black);
+  border-radius: 10px;
+  background: linear-gradient(180deg, #fafafa, #f0f0f0);
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.school-door:hover:not(.is-hit) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 8%);
+}
+
+.school-door.is-hover {
+  border-color: var(--line);
+  background: #fffbe6;
+}
+
+.school-door.is-hit {
+  border-color: var(--ok);
+  background: #f6ffed;
+  cursor: default;
+}
+
+.school-door.is-wrong {
+  animation: card-shake 0.35s ease;
+  border-color: var(--bad);
+}
+
+.school-badge {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.school-gate {
+  width: 70%;
+  height: 36px;
+  border: 2px solid var(--door);
+  border-radius: 4px 4px 0 0;
+  background: linear-gradient(180deg, #a67c52, var(--door));
+}
+
+.school-name {
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.school-check {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--ok);
+  color: var(--white);
+  font-size: 0.65rem;
+  font-weight: 800;
+  opacity: 0;
+  transform: scale(0.5);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.school-door.is-hit .school-check {
+  opacity: 1;
+  transform: scale(1);
+}
+
+@keyframes card-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  25% {
+    transform: translateX(-4px);
+  }
+
+  75% {
+    transform: translateX(4px);
+  }
+}
+
+.feedback {
+  min-height: 1.2em;
+  margin: 6px 0 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-align: center;
+  z-index: 2;
+}
+
+.feedback.is-ok {
+  color: var(--ok);
+}
+
+.feedback.is-bad {
+  color: var(--bad);
+}
+
+.celebration-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  align-items: end;
+  justify-items: center;
+  pointer-events: none;
+}
+
+.celebration-layer[hidden] {
+  display: none !important;
+}
+
+.fireworks-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.celebration-message {
+  position: relative;
+  z-index: 21;
+  margin: 0 0 18px;
+  padding: 10px 18px;
+  border: 3px solid var(--black);
+  background: rgb(255 255 255 / 92%);
+  font-size: 1.05rem;
+  font-weight: 800;
+  text-align: center;
+  animation: pop-in 0.45s ease-out both;
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.92);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-height: 720px) {
+  .game-shell {
+    padding: 10px;
+  }
+
+  .letter-card {
+    min-height: 46px;
+  }
+
+  .school-door {
+    min-height: 78px;
+  }
+
+  .school-gate {
+    height: 30px;
+  }
+}
