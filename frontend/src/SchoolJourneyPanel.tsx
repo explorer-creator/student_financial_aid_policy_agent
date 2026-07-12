@@ -6,10 +6,10 @@ const GAME_SRC = `${import.meta.env.BASE_URL}games/school-journey/index.html`;
 
 export function SchoolJourneyPanel({ onBack }: SchoolJourneyPanelProps) {
   return (
-    <section className="policy-link-game-panel" aria-label="上学路上的补给站">
+    <section className="policy-link-game-panel" aria-label="逐梦补给站">
       <iframe
         className="policy-link-game-frame"
-        title="上学路上的补给站"
+        title="逐梦补给站"
         src={GAME_SRC}
         loading="lazy"
       />

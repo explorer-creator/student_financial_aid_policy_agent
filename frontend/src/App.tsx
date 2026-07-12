@@ -260,7 +260,7 @@ function stripRelatedFilesSection(text: string): string {
 const ASSISTANT_INTRO =
   "你好，我是「砺志励行小助手」里的资助政策咨询入口。\n\n" +
   "我可以协助你了解国家与常见高校层面的奖助学金、助学贷款、绿色通道、勤工助学、困难认定与申诉渠道等信息。回答基于公开政策归纳，个人能否获评、具体金额与时间，请以你就读高校当年正式通知为准。\n\n" +
-  "本助手不提供任何高校机构联系方式，也不代表某一所高校官方意见。更多栏目（辨诈防骗、砺心立志、资助连连看、适合对象连连看、资助小邮差、上学路上的补给站、守信立德、暖心润情等）在侧栏菜单。";
+  "本助手不提供任何高校机构联系方式，也不代表某一所高校官方意见。更多栏目（辨诈防骗、砺心立志、资助连连看、政策连桥、资助小邮差、逐梦补给站、守信立德、暖心润情等）在侧栏菜单。";
 
 const ASSISTANT_SECOND =
   "你可以点击下方快捷主题，或在输入框自由提问。";
@@ -1303,8 +1303,8 @@ export default function App() {
             className={`sidebar-link ${mainView === "policy_match" ? "active" : ""}`}
             onClick={() => navigateView("policy_match")}
           >
-            <span className="sidebar-link-main">适合对象连连看</span>
-            <span className="sidebar-link-sub">政策与学生身份拖线配对</span>
+            <span className="sidebar-link-main">政策连桥</span>
+            <span className="sidebar-link-sub">政策与适合对象连桥配对</span>
           </button>
           <button
             type="button"
@@ -1319,8 +1319,8 @@ export default function App() {
             className={`sidebar-link ${mainView === "school_journey" ? "active" : ""}`}
             onClick={() => navigateView("school_journey")}
           >
-            <span className="sidebar-link-main">上学路上的补给站</span>
-            <span className="sidebar-link-sub">一路收集各学段资助补给</span>
+            <span className="sidebar-link-main">逐梦补给站</span>
+            <span className="sidebar-link-sub">逐梦路上收集各学段资助补给</span>
           </button>
           <button
             type="button"
@@ -1360,9 +1360,9 @@ export default function App() {
             {mainView === "soul_window" && "暖心润情"}
             {mainView === "hongge" && "砺心立志"}
             {mainView === "link_game" && "资助连连看"}
-            {mainView === "policy_match" && "适合对象连连看"}
+            {mainView === "policy_match" && "政策连桥"}
             {mainView === "policy_postman" && "资助小邮差"}
-            {mainView === "school_journey" && "上学路上的补给站"}
+            {mainView === "school_journey" && "逐梦补给站"}
             {mainView === "feedback" && "守信立德"}
           </span>
         </div>

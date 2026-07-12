@@ -6,10 +6,10 @@ const GAME_SRC = `${import.meta.env.BASE_URL}games/policy-match/index.html`;
 
 export function PolicyAudienceMatchPanel({ onBack }: PolicyAudienceMatchPanelProps) {
   return (
-    <section className="policy-link-game-panel" aria-label="政策适合对象连连看">
+    <section className="policy-link-game-panel" aria-label="政策连桥">
       <iframe
         className="policy-link-game-frame"
-        title="政策 · 适合对象连连看"
+        title="政策连桥"
         src={GAME_SRC}
         loading="lazy"
       />

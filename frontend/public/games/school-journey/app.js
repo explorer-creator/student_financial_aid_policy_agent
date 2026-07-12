@@ -180,7 +180,7 @@ function onSupplyClick(btn, option) {
 function advanceStation() {
   if (stationIndex >= STATIONS.length - 1) {
     renderPath();
-    setFeedback("顺利抵达大学，一路补给齐全！", "ok");
+    setFeedback("逐梦抵达大学，一路补给齐全！", "ok");
     showCelebration();
     return;
   }

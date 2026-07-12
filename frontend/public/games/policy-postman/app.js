@@ -21,6 +21,30 @@ const LETTERS = [
     targets: ["primary", "junior"],
   },
   {
+    id: "living",
+    title: "生活补助",
+    hint: "义务教育阶段寄宿生等",
+    targets: ["primary", "junior"],
+  },
+  {
+    id: "k12-free",
+    title: "义务教育「两免一补」",
+    hint: "城乡义务教育学生",
+    targets: ["primary", "junior"],
+  },
+  {
+    id: "high-fee",
+    title: "免学杂费",
+    hint: "普通高中生",
+    targets: ["high"],
+  },
+  {
+    id: "vocational-free",
+    title: "中职免学费",
+    hint: "中职学校全日制学生",
+    targets: ["vocational"],
+  },
+  {
     id: "grant",
     title: "国家助学金",
     hint: "符合条件家庭经济困难学生",
@@ -31,6 +55,24 @@ const LETTERS = [
     title: "国家奖学金",
     hint: "品学兼优的优秀学生",
     targets: ["vocational", "university", "graduate"],
+  },
+  {
+    id: "inspire",
+    title: "国家励志奖学金",
+    hint: "品学兼优且家庭经济困难",
+    targets: ["vocational", "university", "graduate"],
+  },
+  {
+    id: "loan",
+    title: "国家助学贷款",
+    hint: "全日制本专科、研究生",
+    targets: ["university", "graduate"],
+  },
+  {
+    id: "green",
+    title: "绿色通道",
+    hint: "新生入学缓交学费等",
+    targets: ["university", "graduate"],
   },
 ];
 
