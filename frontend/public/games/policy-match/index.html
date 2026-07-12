@@ -27,7 +27,27 @@
 
       <section class="board-section" aria-label="匹配区">
         <div class="match-board" id="matchBoard">
-          <svg class="lines-layer" id="linesLayer" aria-hidden="true"></svg>
+          <svg class="lines-layer" id="linesLayer" aria-hidden="true">
+            <defs>
+              <linearGradient id="perm-line-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#ff9ec8" />
+                <stop offset="45%" stop-color="#c4a7ff" />
+                <stop offset="100%" stop-color="#69b1ff" />
+              </linearGradient>
+              <linearGradient id="temp-line-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#ffb3d9" stop-opacity="0.5" />
+                <stop offset="50%" stop-color="#b8a9ff" stop-opacity="0.65" />
+                <stop offset="100%" stop-color="#91caff" stop-opacity="0.8" />
+              </linearGradient>
+              <filter id="line-soft-glow" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="1.2" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+            </defs>
+          </svg>
           <div class="match-column match-column--policy">
             <h2 class="column-title"><span class="column-badge">左</span>资助政策</h2>
             <ul class="card-list" id="policyList"></ul>

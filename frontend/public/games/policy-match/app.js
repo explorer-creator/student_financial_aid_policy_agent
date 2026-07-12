@@ -54,20 +54,29 @@ function cardCenter(el) {
   };
 }
 
-function drawLine(x1, y1, x2, y2, { color = "#f5a623", width = 3, dash = "", opacity = 1, className = "" } = {}) {
-  const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-  line.setAttribute("x1", String(x1));
-  line.setAttribute("y1", String(y1));
-  line.setAttribute("x2", String(x2));
-  line.setAttribute("y2", String(y2));
-  line.setAttribute("stroke", color);
-  line.setAttribute("stroke-width", String(width));
-  line.setAttribute("stroke-linecap", "round");
-  line.setAttribute("opacity", String(opacity));
-  if (dash) line.setAttribute("stroke-dasharray", dash);
-  if (className) line.setAttribute("class", className);
-  linesLayer.appendChild(line);
-  return line;
+function curvePathD(x1, y1, x2, y2) {
+  const midX = (x1 + x2) / 2;
+  const bend = Math.min(36, Math.abs(x2 - x1) * 0.14);
+  const c1x = x1 + (midX - x1) * 0.62;
+  const c2x = x2 - (x2 - midX) * 0.62;
+  const c1y = y1 - bend * 0.35;
+  const c2y = y2 + bend * 0.35;
+  return `M ${x1} ${y1} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${x2} ${y2}`;
+}
+
+function drawLine(x1, y1, x2, y2, { stroke = "#f5a623", width = 2.5, dash = "", opacity = 1, className = "" } = {}) {
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute("d", curvePathD(x1, y1, x2, y2));
+  path.setAttribute("fill", "none");
+  path.setAttribute("stroke", stroke);
+  path.setAttribute("stroke-width", String(width));
+  path.setAttribute("stroke-linecap", "round");
+  path.setAttribute("stroke-linejoin", "round");
+  path.setAttribute("opacity", String(opacity));
+  if (dash) path.setAttribute("stroke-dasharray", dash);
+  if (className) path.setAttribute("class", className);
+  linesLayer.appendChild(path);
+  return path;
 }
 
 function clearTempLines() {
@@ -79,7 +88,12 @@ function redrawPermanentLines() {
   permanentLines.forEach(({ policyEl, audienceEl }) => {
     const p = cardCenter(policyEl);
     const a = cardCenter(audienceEl);
-    drawLine(p.x, p.y, a.x, a.y, { color: "#389e0d", width: 4, className: "perm-line" });
+    drawLine(p.x, p.y, a.x, a.y, {
+      stroke: "url(#perm-line-gradient)",
+      width: 3,
+      opacity: 0.88,
+      className: "perm-line",
+    });
   });
 }
 
@@ -131,7 +145,13 @@ function tryMatch(policyId, audienceId) {
     const p = cardCenter(policyEl);
     const a = cardCenter(audienceEl);
     clearTempLines();
-    drawLine(p.x, p.y, a.x, a.y, { color: "#cf1322", width: 3, dash: "6 4", className: "temp-line" });
+    drawLine(p.x, p.y, a.x, a.y, {
+      stroke: "#d4a5e8",
+      width: 2.5,
+      dash: "5 6",
+      opacity: 0.58,
+      className: "temp-line is-wrong-line",
+    });
     flashWrong(policyEl, audienceEl);
     window.setTimeout(clearTempLines, 450);
     selectedPolicyId = null;
@@ -218,9 +238,10 @@ function moveDrag(e) {
   const pos = pointerPos(e);
   clearTempLines();
   drawLine(dragState.start.x, dragState.start.y, pos.x, pos.y, {
-    color: "#f5a623",
-    width: 3,
-    dash: "5 4",
+    stroke: "url(#temp-line-gradient)",
+    width: 2.5,
+    dash: "6 5",
+    opacity: 0.78,
     className: "temp-line",
   });
 }
@@ -334,7 +355,7 @@ function resetGame() {
   matchedIds = new Set();
   permanentLines = [];
   dragState = null;
-  linesLayer.innerHTML = "";
+  linesLayer.querySelectorAll("path").forEach((node) => node.remove());
   hideCelebration();
   renderLists();
   updateCounter();
